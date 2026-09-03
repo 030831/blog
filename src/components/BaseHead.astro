@@ -36,11 +36,16 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
   테마 초기화. 화면이 그려지기 전에 실행돼야 새로고침 시 흰 화면이 번쩍이지 않습니다.
   그래서 번들러를 거치지 않는 인라인 스크립트로 둡니다.
 -->
-<script is:inline>
+<script is:inline define:vars={{ defaultSkin: SITE.skin }}>
   (() => {
-    const stored = localStorage.getItem('theme');
-    const dark = stored ? stored === 'dark'
-                        : matchMedia('(prefers-color-scheme: dark)').matches;
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    const root = document.documentElement;
+
+    const storedTheme = localStorage.getItem('theme');
+    const dark = storedTheme ? storedTheme === 'dark'
+                             : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'dark' : 'light';
+
+    // 디자인 시안을 골라본 적이 있으면 그것을, 없으면 config의 기본값을 씁니다.
+    root.dataset.skin = localStorage.getItem('skin') || defaultSkin;
   })();
 </script>

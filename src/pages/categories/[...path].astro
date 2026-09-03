@@ -1,0 +1,50 @@
+---
+import SidebarLayout from '../../layouts/SidebarLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import Breadcrumb from '../../components/Breadcrumb.astro';
+import { getCategoryTree, flattenTree, getPostsInCategory, labelOf } from '../../lib/categories';
+
+export async function getStaticPaths() {
+  const tree = await getCategoryTree();
+  const all = flattenTree(tree);
+
+  return Promise.all(
+    all.map(async (node) => ({
+      params: { path: node.path },
+      props: { node, posts: await getPostsInCategory(node.path) },
+    })),
+  );
+}
+
+const { node, posts } = Astro.props;
+const parentPath = node.path.split('/').slice(0, -1).join('/');
+---
+
+<SidebarLayout
+  title={labelOf(node.path)}
+  description={`${labelOf(node.path)} 카테고리의 글 ${posts.length}개`}
+  current={node.path}
+>
+  <header class="page-head">
+    <Breadcrumb path={parentPath} />
+    <h1>{node.label}</h1>
+    <p>
+      {posts.length}개의 글
+      {node.children.length > 0 && <span class="sub-note">· 하위 카테고리 포함</span>}
+    </p>
+  </header>
+
+  {posts.length === 0 ? (
+    <p class="empty">아직 이 카테고리에 글이 없습니다.</p>
+  ) : (
+    posts.map((post) => <PostCard post={post} />)
+  )}
+</SidebarLayout>
+
+<style>
+  .page-head { padding-bottom: .5rem; }
+  .page-head h1 { margin: .5rem 0 0; font-size: 1.875rem; font-weight: 800; letter-spacing: -0.03em; }
+  .page-head p { margin: .5rem 0 0; color: var(--text-muted); font-size: .9375rem; }
+  .sub-note { color: var(--text-faint); }
+  .empty { color: var(--text-muted); padding-block: 2rem; }
+</style>

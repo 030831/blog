@@ -1,0 +1,35 @@
+---
+import SidebarLayout from '../../layouts/SidebarLayout.astro';
+import PostCard from '../../components/PostCard.astro';
+import { getPublishedPosts } from '../../lib/posts';
+
+const posts = await getPublishedPosts();
+const recent = posts.slice(0, 8);
+---
+
+<SidebarLayout title="카테고리" description="주제별로 정리한 글">
+  <header class="page-head">
+    <h1>카테고리</h1>
+    <p>왼쪽에서 주제를 고르면 그 아래 글이 모두 나옵니다.</p>
+  </header>
+
+  <h2 class="section">최근 글</h2>
+  {recent.map((post) => <PostCard post={post} />)}
+</SidebarLayout>
+
+<style>
+  .page-head { padding-bottom: 1.5rem; }
+  .page-head h1 { margin: 0; font-size: 1.875rem; font-weight: 800; letter-spacing: -0.03em; }
+  .page-head p { margin: .5rem 0 0; color: var(--text-muted); font-size: .9375rem; }
+
+  .section {
+    margin: 0;
+    padding-bottom: .5rem;
+    border-bottom: 1px solid var(--border-strong);
+    font-size: .8125rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+</style>

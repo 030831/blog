@@ -1,7 +1,7 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import FormattedDate from '../../components/FormattedDate.astro';
-import { getPublishedPosts } from '../../lib/posts';
+import { getPublishedPosts, urlOf } from '../../lib/posts';
 
 const posts = await getPublishedPosts();
 
@@ -28,7 +28,7 @@ const years = [...byYear.keys()].sort((a, b) => b - a);
         <ul>
           {byYear.get(year)!.map((post) => (
             <li>
-              <a href={`/posts/${post.id}/`}>
+              <a href={urlOf(post)}>
                 <span class="t">{post.data.title}</span>
                 <span class="d"><FormattedDate date={post.data.date} /></span>
               </a>

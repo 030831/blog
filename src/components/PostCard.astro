@@ -1,13 +1,13 @@
 ---
 import FormattedDate from './FormattedDate.astro';
-import type { Post } from '../lib/posts';
+import { urlOf, type Post } from '../lib/posts';
 
 interface Props { post: Post; }
 const { post } = Astro.props;
 ---
 
 <article class="card">
-  <a href={`/posts/${post.id}/`} class="title-link">
+  <a href={urlOf(post)} class="title-link">
     <h2>{post.data.title}</h2>
   </a>
 

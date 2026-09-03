@@ -3,53 +3,30 @@
    색을 바꾸고 싶으면 --accent 값만 바꾸면 사이트 전체가 따라옵니다.
    ============================================================ */
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+@import './skins.css';
 
 :root {
-  color-scheme: light;
+  /* ── 구조 토큰: 스킨이 바뀌어도 유지되는 값 ── */
+  --measure: 44rem;      /* 본문 최대 너비 — 한 줄 길이가 읽기에 가장 편한 값 */
+  --gutter: 1.5rem;
 
-  /* 표면 */
-  --bg:            #fbfaf8;
-  --bg-subtle:     #f3f1ed;
-  --surface:       #ffffff;
-  --border:        #e5e1da;
-  --border-strong: #d3cec4;
+  /* 모서리 둥글기. 스킨이 이 값을 덮어씁니다. */
+  --radius: 10px;
+  --radius-sm: 6px;
 
-  /* 텍스트 */
-  --text:          #1c1b19;
-  --text-muted:    #6b6862;
-  --text-faint:    #94908a;
-
-  /* 강조 */
-  --accent:        #b4531f;
-  --accent-soft:   #f6ece4;
-
-  /* 타이포 */
+  /* 글꼴. 스킨이 이 값을 덮어씁니다. */
   --font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
                'Segoe UI', 'Malgun Gothic', system-ui, sans-serif;
+  --font-display: var(--font-sans);   /* 제목용 */
   --font-mono: 'JetBrains Mono', 'D2Coding', ui-monospace, SFMono-Regular,
                Menlo, Consolas, monospace;
 
-  /* 레이아웃 */
-  --measure: 44rem;      /* 본문 최대 너비 — 한 줄 길이가 읽기에 가장 편한 값 */
-  --gutter: 1.5rem;
+  --title-weight: 800;
+  --title-tracking: -0.035em;
 }
 
-:root[data-theme='dark'] {
-  color-scheme: dark;
 
-  --bg:            #16161a;
-  --bg-subtle:     #1e1e23;
-  --surface:       #1b1b20;
-  --border:        #2e2e35;
-  --border-strong: #43434d;
 
-  --text:          #e8e6e3;
-  --text-muted:    #a3a09b;
-  --text-faint:    #78756f;
-
-  --accent:        #e8935c;
-  --accent-soft:   #2a211b;
-}
 
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -94,7 +71,7 @@ img, svg, video { max-width: 100%; height: auto; display: block; }
 .skip-link {
   position: absolute; left: 50%; top: .5rem; transform: translate(-50%, -200%);
   background: var(--surface); border: 1px solid var(--border-strong);
-  padding: .5rem 1rem; border-radius: 6px; z-index: 100; transition: transform .15s;
+  padding: .5rem 1rem; border-radius: var(--radius-sm); z-index: 100; transition: transform .15s;
 }
 .skip-link:focus { transform: translate(-50%, 0); }
 
@@ -115,6 +92,7 @@ img, svg, video { max-width: 100%; height: auto; display: block; }
 .prose > * + * { margin-top: 1.4em; }
 
 .prose h2, .prose h3, .prose h4 {
+  font-family: var(--font-display);
   line-height: 1.35;
   letter-spacing: -0.02em;
   font-weight: 700;
@@ -171,7 +149,7 @@ img, svg, video { max-width: 100%; height: auto; display: block; }
   font-size: .875em;
   background: var(--bg-subtle);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   padding: .12em .38em;
   word-break: break-word;
 }
@@ -182,7 +160,7 @@ img, svg, video { max-width: 100%; height: auto; display: block; }
   font-size: .875rem;
   line-height: 1.7;
   padding: 1.1rem 1.2rem;
-  border-radius: 10px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   overflow-x: auto;
   tab-size: 2;
@@ -211,7 +189,7 @@ img, svg, video { max-width: 100%; height: auto; display: block; }
 }
 .prose th { font-weight: 600; background: var(--bg-subtle); }
 
-.prose img { border-radius: 10px; border: 1px solid var(--border); }
+.prose img { border-radius: var(--radius); border: 1px solid var(--border); }
 
 .prose figure { margin-inline: 0; }
 .prose figcaption {
@@ -239,7 +217,7 @@ img, svg, video { max-width: 100%; height: auto; display: block; }
   padding: .55rem 1.2rem;
   border-bottom: 1px solid var(--border);
   background: var(--bg-subtle);
-  border-radius: 9px 9px 0 0;
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 
 /* 파일명이 없으면 언어 이름을 우측 상단에 흐리게 */
@@ -266,7 +244,7 @@ img, svg, video { max-width: 100%; height: auto; display: block; }
   color: var(--text-muted);
   background: var(--bg);
   border: 1px solid var(--border-strong);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   opacity: 0;
   transition: opacity .15s, color .15s, border-color .15s;
@@ -296,7 +274,7 @@ img, svg, video { max-width: 100%; height: auto; display: block; }
    마크다운에서:  <details><summary>전체 코드</summary>  ```java ... ```  </details> */
 .prose details {
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius);
   padding: .5rem 1rem;
   background: var(--bg-subtle);
 }

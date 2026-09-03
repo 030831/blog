@@ -1,0 +1,31 @@
+---
+import { breadcrumbOf, urlOfCategory } from '../lib/categories';
+
+interface Props { path: string; }
+const trail = breadcrumbOf(Astro.props.path);
+---
+
+{trail.length > 0 && (
+  <nav class="crumb" aria-label="현재 위치">
+    {trail.map((step, i) => (
+      <>
+        {i > 0 && <span class="sep" aria-hidden="true">›</span>}
+        <a href={urlOfCategory(step.path)}>{step.label}</a>
+      </>
+    ))}
+  </nav>
+)}
+
+<style>
+  .crumb {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .4rem;
+    font-size: .8125rem;
+    color: var(--text-faint);
+  }
+  .crumb a { color: var(--text-muted); transition: color .15s; }
+  .crumb a:hover { color: var(--accent); }
+  .sep { color: var(--text-faint); }
+</style>

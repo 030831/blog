@@ -1,0 +1,72 @@
+---
+import CategoryTree from './CategoryTree.astro';
+import { getCategoryTree } from '../lib/categories';
+
+interface Props { current?: string; }
+const { current = '' } = Astro.props;
+
+const tree = await getCategoryTree();
+---
+
+<aside class="sidebar">
+  <!--
+    모바일에서는 트리가 본문을 밀어내므로 접어 둡니다.
+    <details>라 자바스크립트 없이도 열립니다.
+  -->
+  <details class="panel">
+    <summary>
+      <span class="side-title">카테고리</span>
+      <span class="chev" aria-hidden="true">▾</span>
+    </summary>
+    <nav aria-label="카테고리">
+      <CategoryTree nodes={tree} current={current} />
+    </nav>
+  </details>
+</aside>
+
+<style>
+  .sidebar { min-width: 0; }
+
+  .side-title {
+    font-size: .7rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .5rem .45rem;
+    cursor: pointer;
+    list-style: none;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: .5rem;
+  }
+  summary::-webkit-details-marker { display: none; }
+  .chev { color: var(--text-faint); font-size: .7rem; transition: transform .15s; }
+  .panel[open] .chev { transform: rotate(180deg); }
+
+  /* 넓은 화면에서는 항상 펼쳐두고 접기 UI를 숨깁니다. */
+  @media (min-width: 60rem) {
+    .sidebar {
+      position: sticky;
+      top: 5rem;
+      align-self: start;
+      /* 트리가 길어지면 사이드바 안에서만 스크롤됩니다. 본문 스크롤과 분리돼
+         목록을 훑는 동안 읽던 위치를 잃지 않습니다. */
+      max-height: calc(100vh - 7rem);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+    }
+    summary { display: none; }
+    .panel > nav { display: block !important; }
+  }
+
+  @media (max-width: 59.99rem) {
+    .panel:not([open]) > nav { display: none; }
+  }
+</style>
