@@ -1,0 +1,44 @@
+---
+import { SITE } from '../config';
+const year = new Date().getFullYear();
+---
+
+<footer>
+  <div class="wrap wrap--wide inner">
+    <p class="copy">© {year} {SITE.author}</p>
+    {SITE.social.length > 0 && (
+      <ul class="links">
+        {SITE.social.map((s) => (
+          <li><a href={s.href} rel="me noopener">{s.label}</a></li>
+        ))}
+      </ul>
+    )}
+  </div>
+</footer>
+
+<style>
+  footer {
+    margin-top: 6rem;
+    border-top: 1px solid var(--border);
+    padding-block: 2rem 3rem;
+    font-size: .875rem;
+    color: var(--text-muted);
+  }
+  .inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .copy { margin: 0; }
+  .links {
+    display: flex;
+    gap: 1.25rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .links a { transition: color .15s; }
+  .links a:hover { color: var(--accent); }
+</style>

@@ -1,0 +1,144 @@
+---
+import { render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import FormattedDate from '../../components/FormattedDate.astro';
+import TableOfContents from '../../components/TableOfContents.astro';
+import { getPublishedPosts, readingTime } from '../../lib/posts';
+
+export async function getStaticPaths() {
+  const posts = await getPublishedPosts();
+  return posts.map((post, i) => ({
+    params: { slug: post.id },
+    props: {
+      post,
+      // 목록이 최신순이므로 앞 항목이 더 최신 글입니다.
+      newer: posts[i - 1] ?? null,
+      older: posts[i + 1] ?? null,
+    },
+  }));
+}
+
+const { post, newer, older } = Astro.props;
+const { Content, headings } = await render(post);
+const minutes = readingTime(post.body ?? '');
+---
+
+<BaseLayout
+  title={post.data.title}
+  description={post.data.description}
+  date={post.data.date}
+>
+  <article class="wrap">
+    <header class="post-head">
+      <h1>{post.data.title}</h1>
+
+      <div class="meta">
+        <FormattedDate date={post.data.date} />
+        <span aria-hidden="true">·</span>
+        <span>약 {minutes}분</span>
+        {post.data.updated && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span>수정 <FormattedDate date={post.data.updated} /></span>
+          </>
+        )}
+      </div>
+
+      {post.data.tags.length > 0 && (
+        <ul class="tags">
+          {post.data.tags.map((tag) => (
+            <li><a href={`/tags/${encodeURIComponent(tag)}/`}>#{tag}</a></li>
+          ))}
+        </ul>
+      )}
+    </header>
+
+    <TableOfContents headings={headings} />
+
+    <div class="prose">
+      <Content />
+    </div>
+  </article>
+
+  {(newer || older) && (
+    <nav class="wrap adjacent" aria-label="다른 글">
+      {older ? (
+        <a href={`/posts/${older.id}/`} class="adj prev">
+          <span class="label">이전 글</span>
+          <span class="t">{older.data.title}</span>
+        </a>
+      ) : <span />}
+
+      {newer && (
+        <a href={`/posts/${newer.id}/`} class="adj next">
+          <span class="label">다음 글</span>
+          <span class="t">{newer.data.title}</span>
+        </a>
+      )}
+    </nav>
+  )}
+</BaseLayout>
+
+<style>
+  .post-head { padding-block: 3.5rem 1.5rem; }
+  .post-head h1 {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1.3;
+    letter-spacing: -0.035em;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-top: .9rem;
+    font-size: .875rem;
+    color: var(--text-faint);
+  }
+  .tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    list-style: none;
+    margin: .9rem 0 0;
+    padding: 0;
+    font-size: .8125rem;
+  }
+  .tags a {
+    display: inline-block;
+    padding: .15rem .55rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-muted);
+    transition: color .15s, border-color .15s;
+  }
+  .tags a:hover { color: var(--accent); border-color: var(--accent); }
+
+  .adjacent {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+  }
+  .adj {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    transition: border-color .15s, background .15s;
+  }
+  .adj:hover { border-color: var(--border-strong); background: var(--bg-subtle); }
+  .adj.next { text-align: right; }
+  .label { font-size: .75rem; color: var(--text-faint); }
+  .adj .t { font-size: .9375rem; font-weight: 600; line-height: 1.45; }
+
+  @media (max-width: 34rem) {
+    .adjacent { grid-template-columns: 1fr; }
+    .adj.next { text-align: left; }
+  }
+</style>

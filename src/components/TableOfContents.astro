@@ -1,0 +1,63 @@
+---
+import type { MarkdownHeading } from 'astro';
+
+interface Props { headings: MarkdownHeading[]; }
+// h2, h3만 목차에 넣습니다. 더 깊이 들어가면 목차가 본문보다 복잡해집니다.
+const items = Astro.props.headings.filter((h) => h.depth === 2 || h.depth === 3);
+---
+
+{items.length >= 3 && (
+  <nav class="toc" aria-label="목차">
+    <p class="toc-title">목차</p>
+    <ul>
+      {items.map((h) => (
+        <li class:list={[`depth-${h.depth}`]}>
+          <a href={`#${h.slug}`}>{h.text}</a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+)}
+
+<style>
+  .toc {
+    margin-block: 2rem;
+    padding: 1.1rem 1.3rem;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: .9rem;
+  }
+  .toc-title {
+    margin: 0 0 .6rem;
+    font-size: .75rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { line-height: 1.55; }
+  li + li { margin-top: .4rem; }
+  .depth-3 { padding-left: 1rem; font-size: .86rem; }
+  a { color: var(--text-muted); transition: color .15s; }
+  a:hover { color: var(--accent); }
+
+  /* 넓은 화면에서는 본문 옆에 고정해서 따라다니게 합니다. */
+  @media (min-width: 1180px) {
+    .toc {
+      position: fixed;
+      top: 6rem;
+      left: calc(50% + var(--measure) / 2 + 3rem);
+      width: 15rem;
+      max-height: calc(100vh - 9rem);
+      overflow-y: auto;
+      margin: 0;
+      background: transparent;
+      border: 0;
+      border-left: 1px solid var(--border);
+      border-radius: 0;
+      padding: 0 0 0 1.2rem;
+    }
+  }
+</style>

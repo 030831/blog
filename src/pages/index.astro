@@ -1,0 +1,83 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostCard from '../components/PostCard.astro';
+import { SITE } from '../config';
+import { getPublishedPosts } from '../lib/posts';
+
+const posts = await getPublishedPosts();
+const recent = posts.slice(0, 6);
+---
+
+<BaseLayout title={SITE.title}>
+  <div class="wrap">
+    <section class="intro">
+      <h1>{SITE.title}</h1>
+      <p>{SITE.description}</p>
+    </section>
+
+    <section aria-labelledby="recent-heading">
+      <div class="section-head">
+        <h2 id="recent-heading">최근 글</h2>
+        {posts.length > recent.length && <a href="/posts" class="more">전체 보기 →</a>}
+      </div>
+
+      {recent.length === 0 ? (
+        <p class="empty">
+          아직 글이 없습니다. <code>src/content/posts/</code> 에 마크다운 파일을 추가해 보세요.
+        </p>
+      ) : (
+        recent.map((post) => <PostCard post={post} />)
+      )}
+    </section>
+  </div>
+</BaseLayout>
+
+<style>
+  .intro { padding-block: 4.5rem 3rem; }
+  .intro h1 {
+    margin: 0;
+    font-size: 2.25rem;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+  }
+  .intro p {
+    margin: 1rem 0 0;
+    color: var(--text-muted);
+    font-size: 1.0625rem;
+    line-height: 1.7;
+    max-width: 34rem;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: .5rem;
+    border-bottom: 1px solid var(--border-strong);
+  }
+  .section-head h2 {
+    margin: 0;
+    font-size: .8125rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+  .more {
+    font-size: .875rem;
+    color: var(--text-muted);
+    transition: color .15s;
+  }
+  .more:hover { color: var(--accent); }
+
+  .empty { color: var(--text-muted); padding-block: 2rem; }
+  .empty code {
+    font-family: var(--font-mono);
+    font-size: .875em;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: .12em .38em;
+  }
+</style>

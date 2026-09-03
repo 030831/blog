@@ -1,0 +1,77 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import FormattedDate from '../../components/FormattedDate.astro';
+import { getPublishedPosts } from '../../lib/posts';
+
+const posts = await getPublishedPosts();
+
+// 연도별로 묶어서 보여줍니다. 글이 쌓일수록 이 화면이 아카이브 역할을 합니다.
+const byYear = new Map<number, typeof posts>();
+for (const post of posts) {
+  const year = post.data.date.getFullYear();
+  if (!byYear.has(year)) byYear.set(year, []);
+  byYear.get(year)!.push(post);
+}
+const years = [...byYear.keys()].sort((a, b) => b - a);
+---
+
+<BaseLayout title="글" description="전체 글 목록">
+  <div class="wrap">
+    <header class="page-head">
+      <h1>글</h1>
+      <p>{posts.length}개의 글</p>
+    </header>
+
+    {years.map((year) => (
+      <section class="year-group">
+        <h2 class="year">{year}</h2>
+        <ul>
+          {byYear.get(year)!.map((post) => (
+            <li>
+              <a href={`/posts/${post.id}/`}>
+                <span class="t">{post.data.title}</span>
+                <span class="d"><FormattedDate date={post.data.date} /></span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))}
+  </div>
+</BaseLayout>
+
+<style>
+  .page-head { padding-block: 3.5rem 2rem; }
+  .page-head h1 { margin: 0; font-size: 1.875rem; font-weight: 800; letter-spacing: -0.03em; }
+  .page-head p { margin: .5rem 0 0; color: var(--text-muted); font-size: .9375rem; }
+
+  .year-group { margin-top: 2.5rem; }
+  .year {
+    margin: 0 0 .5rem;
+    padding-bottom: .5rem;
+    border-bottom: 1px solid var(--border-strong);
+    font-size: .8125rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    color: var(--text-faint);
+  }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { border-bottom: 1px solid var(--border); }
+  li:last-child { border-bottom: 0; }
+
+  li a {
+    display: flex;
+    gap: 1.5rem;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-block: .85rem;
+    transition: color .15s;
+  }
+  li a:hover .t { color: var(--accent); }
+  .t { line-height: 1.5; }
+  .d { flex-shrink: 0; font-size: .8125rem; color: var(--text-faint); }
+
+  @media (max-width: 32rem) {
+    li a { flex-direction: column; gap: .25rem; }
+  }
+</style>

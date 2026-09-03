@@ -1,0 +1,46 @@
+---
+import { SITE } from '../config';
+
+interface Props {
+  title: string;
+  description?: string;
+  /** 글 페이지면 발행일을 넘겨주세요. OG 태그가 article 타입으로 바뀝니다. */
+  date?: Date;
+}
+
+const { title, description = SITE.description, date } = Astro.props;
+const pageTitle = title === SITE.title ? title : `${title} — ${SITE.title}`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{pageTitle}</title>
+<meta name="description" content={description} />
+<meta name="author" content={SITE.author} />
+<link rel="canonical" href={canonical} />
+<link rel="alternate" type="application/rss+xml" title={SITE.title} href="/rss.xml" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="sitemap" href="/sitemap-index.xml" />
+
+<meta property="og:type" content={date ? 'article' : 'website'} />
+<meta property="og:title" content={pageTitle} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical} />
+<meta property="og:site_name" content={SITE.title} />
+<meta property="og:locale" content="ko_KR" />
+{date && <meta property="article:published_time" content={date.toISOString()} />}
+<meta name="twitter:card" content="summary_large_image" />
+
+<!--
+  테마 초기화. 화면이 그려지기 전에 실행돼야 새로고침 시 흰 화면이 번쩍이지 않습니다.
+  그래서 번들러를 거치지 않는 인라인 스크립트로 둡니다.
+-->
+<script is:inline>
+  (() => {
+    const stored = localStorage.getItem('theme');
+    const dark = stored ? stored === 'dark'
+                        : matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  })();
+</script>

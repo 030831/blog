@@ -1,0 +1,54 @@
+---
+import BaseHead from '../components/BaseHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+  date?: Date;
+}
+const { title, description, date } = Astro.props;
+---
+
+<!doctype html>
+<html lang="ko">
+  <head>
+    <BaseHead title={title} description={description} date={date} />
+  </head>
+  <body>
+    <a href="#main" class="skip-link">본문으로 건너뛰기</a>
+    <Header />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+
+    <script>
+      // 코드 블록마다 복사 버튼을 붙입니다.
+      // 서버에서 굽지 않고 여기서 붙이는 이유: JS가 없는 환경에서는
+      // 눌러도 동작하지 않는 버튼이 보이지 않는 편이 낫기 때문입니다.
+      for (const pre of document.querySelectorAll<HTMLPreElement>('.prose pre')) {
+        const button = document.createElement('button');
+        button.className = 'copy-button';
+        button.type = 'button';
+        button.textContent = '복사';
+        button.setAttribute('aria-label', '코드 복사');
+
+        button.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(pre.innerText);
+          button.textContent = '복사됨';
+          button.classList.add('copied');
+          setTimeout(() => {
+            button.textContent = '복사';
+            button.classList.remove('copied');
+          }, 1600);
+        });
+
+        pre.parentElement?.classList.add('code-block');
+        pre.parentElement?.appendChild(button);
+      }
+    </script>
+  </body>
+</html>
