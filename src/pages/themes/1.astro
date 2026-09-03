@@ -1,0 +1,90 @@
+---
+// [시안 1] 미니멀 저널 — Jekyll minima 계열. 장식 없이 글 목록만.
+import DemoShell from '../../layouts/DemoShell.astro';
+import { getPublishedPosts, urlOf } from '../../lib/posts';
+
+const posts = await getPublishedPosts();
+const fmt = (d: Date) =>
+  new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'short', day: 'numeric' }).format(d);
+---
+
+<DemoShell title="시안 1 · 미니멀 저널">
+  <div class="page">
+    <header class="head">
+      <h1 class="site">030831</h1>
+      <nav>
+        <a href="#">글</a><a href="#">카테고리</a><a href="#">소개</a>
+      </nav>
+    </header>
+
+    <p class="bio">백엔드 개발을 공부하며 남기는 기록.</p>
+
+    <ul class="posts">
+      {posts.map((post) => (
+        <li>
+          <time>{fmt(post.data.date)}</time>
+          <a href={urlOf(post)}>{post.data.title}</a>
+        </li>
+      ))}
+    </ul>
+
+    <footer class="foot">
+      <span>© 2026 030831</span>
+      <span>GitHub · RSS</span>
+    </footer>
+  </div>
+</DemoShell>
+
+<style>
+  .page { max-width: 38rem; margin-inline: auto; padding: 4rem 1.5rem; }
+
+  .head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .site { margin: 0; font-size: 1.35rem; font-weight: 700; letter-spacing: -0.02em; }
+  nav { display: flex; gap: 1.1rem; font-size: .9rem; }
+  nav a { color: var(--text-muted); }
+  nav a:hover { color: var(--accent); }
+
+  .bio {
+    margin: 1.25rem 0 3.5rem;
+    color: var(--text-muted);
+    font-size: .95rem;
+  }
+
+  .posts { list-style: none; margin: 0; padding: 0; }
+  .posts li {
+    display: flex;
+    gap: 1.5rem;
+    align-items: baseline;
+    padding-block: .7rem;
+  }
+  .posts time {
+    flex-shrink: 0;
+    width: 7rem;
+    font-size: .82rem;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .posts a { font-size: 1rem; line-height: 1.5; }
+  .posts a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+
+  .foot {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    font-size: .8125rem;
+    color: var(--text-faint);
+  }
+
+  @media (max-width: 34rem) {
+    .posts li { flex-direction: column; gap: .15rem; }
+    .posts time { width: auto; }
+  }
+</style>
