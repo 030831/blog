@@ -14,7 +14,7 @@ export const SITE = {
   ],
   // 푸터 링크. 비워두면 표시되지 않습니다.
   social: [
-    { label: 'GitHub', href: 'https://github.com/KimHyunJun' },
+    { label: 'GitHub', href: 'https://github.com/030831' },
     { label: 'RSS', href: '/rss.xml' },
   ],
   postsPerPage: 10,
