@@ -1,0 +1,6 @@
+# 여러 컴퓨터(Windows/macOS/Linux)에서 같은 저장소를 쓸 때
+# 줄바꿈 차이 때문에 파일 전체가 수정된 것처럼 보이는 일을 막습니다.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.svg text
