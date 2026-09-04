@@ -6,27 +6,17 @@
  * src/content/posts/ 아래에 .md 파일이 만들어집니다.
  * 배포된 사이트에는 파일을 쓸 서버가 없으므로 여기서는 열리지 않습니다.
  */
-import { readdirSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { CATEGORY_LABELS } from '../config';
+import { categoryFolders, nextPostId } from '../lib/post-files.js';
 import '../styles/global.css';
 
 const isDev = import.meta.env.DEV;
 
-/** 이미 있는 카테고리 폴더를 모읍니다. */
-function categoryFolders(dir: string, prefix = ''): string[] {
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir).flatMap((name) => {
-    const full = join(dir, name);
-    if (!statSync(full).isDirectory()) return [];
-    const path = prefix ? `${prefix}/${name}` : name;
-    return [path, ...categoryFolders(full, path)];
-  });
-}
-
-const categories = isDev
-  ? categoryFolders(join(process.cwd(), 'src', 'content', 'posts')).sort()
-  : [];
+const POSTS_DIR = join(process.cwd(), 'src', 'content', 'posts');
+const categories = isDev ? categoryFolders(POSTS_DIR).sort() : [];
+// 이 글에 매겨질 번호. 그대로 주소가 됩니다.
+const newPostId = isDev ? nextPostId(POSTS_DIR) : 0;
 
 const today = (() => {
   const now = new Date();
@@ -129,10 +119,10 @@ const today = (() => {
               </datalist>
             </label>
 
-            <label>
-              <span>주소</span>
-              <input id="slug" type="text" placeholder="my-post" autocomplete="off" />
-            </label>
+            <span class="post-no" title="이 글의 주소가 됩니다">
+              주소 <code id="post-url">/posts/{newPostId}/</code>
+            </span>
+            <input id="post-id" type="hidden" value={String(newPostId)} />
 
             <label>
               <span>날짜</span>
@@ -307,6 +297,17 @@ const today = (() => {
         box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
       }
 
+      .post-no { font-size: .8rem; color: var(--text-faint); white-space: nowrap; }
+      .post-no code {
+        font-family: var(--font-mono);
+        font-size: .95em;
+        color: var(--text-muted);
+        background: var(--bg-subtle);
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        padding: .2em .45em;
+      }
+
       .actions { display: flex; align-items: center; gap: .6rem; }
       .status { font-size: .8rem; color: var(--text-muted); }
       .status.error { color: #c0392b; }
@@ -344,7 +345,7 @@ const today = (() => {
       const tagsInput = $<HTMLInputElement>('tags');
       const bodyInput = $<HTMLTextAreaElement>('body');
       const categoryInput = $<HTMLInputElement>('category');
-      const slugInput = $<HTMLInputElement>('slug');
+      const postIdInput = $<HTMLInputElement>('post-id');
       const dateInput = $<HTMLInputElement>('date');
       const preview = $('preview');
       const previewTitle = $('preview-title');
@@ -363,16 +364,7 @@ const today = (() => {
           preview.innerHTML = marked.parse(bodyInput.value) as string;
         };
 
-        // ── 제목에서 주소 자동 생성 ──
-        // 한글은 주소에서 깨지므로 영문/숫자만 남깁니다. 비면 직접 적어야 합니다.
-        const autoSlug = (text: string) =>
-          text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-
-        let slugTouched = false;
-        slugInput?.addEventListener('input', () => { slugTouched = true; });
-
         titleInput.addEventListener('input', () => {
-          if (slugInput && !slugTouched) slugInput.value = autoSlug(titleInput.value);
           render();
           saveLocal();
         });
@@ -388,7 +380,6 @@ const today = (() => {
                 tags: tagsInput?.value ?? '',
                 body: bodyInput.value,
                 category: categoryInput?.value ?? '',
-                slug: slugInput?.value ?? '',
                 date: dateInput?.value ?? '',
               }),
             );
@@ -406,7 +397,6 @@ const today = (() => {
             bodyInput.value = data.body ?? '';
             if (tagsInput) tagsInput.value = data.tags ?? '';
             if (categoryInput) categoryInput.value = data.category ?? '';
-            if (slugInput && data.slug) { slugInput.value = data.slug; slugTouched = true; }
             if (dateInput && data.date) dateInput.value = data.date;
           } catch {
             // 깨진 값이면 무시합니다.
@@ -488,7 +478,8 @@ const today = (() => {
         const save = async (draft: boolean, overwrite = false): Promise<void> => {
           const payload = {
             title: titleInput.value.trim(),
-            slug: (slugInput?.value ?? '').trim(),
+            // 파일 이름은 서버가 제목에서 만듭니다. 주소는 아래 번호가 결정합니다.
+            postId: Number(postIdInput?.value ?? 0),
             category: (categoryInput?.value ?? '').trim(),
             date: dateInput?.value ?? '',
             description: '',
@@ -502,9 +493,6 @@ const today = (() => {
           };
 
           if (!payload.title) return setStatus('제목을 입력하세요.', 'error');
-          if (!payload.slug) {
-            return setStatus('주소 이름을 영문으로 적어주세요.', 'error');
-          }
 
           setStatus('저장 중…');
 

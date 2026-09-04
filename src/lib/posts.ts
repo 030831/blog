@@ -3,15 +3,17 @@ import { getCollection, type CollectionEntry } from 'astro:content';
 export type Post = CollectionEntry<'posts'>;
 
 /**
- * 글의 URL 슬러그. 폴더 경로를 뺀 파일 이름만 씁니다.
+ * 글의 주소 조각. 프론트매터의 postId(글 번호)를 씁니다.
  *
- * 'backend/spring/2026-08-24-jpa' → '2026-08-24-jpa'
+ * 파일 이름이나 제목이 아니라 번호를 쓰는 이유:
+ * - 한글 제목을 그대로 쓰면 주소가 %EC%BB%A4... 로 인코딩되어 읽을 수 없습니다
+ * - 로마자로 옮기면 읽기도 어렵고 검색엔진이 원래 낱말로 인식하지도 못합니다
+ * - 번호로 두면 제목을 고치거나 카테고리를 옮겨도 주소가 그대로입니다
  *
- * 카테고리를 바꾸려고 글을 다른 폴더로 옮겨도 주소가 그대로 유지되도록
- * 일부러 폴더를 URL에서 뺐습니다. 이미 공유된 링크가 깨지지 않습니다.
+ * 대신 파일 이름은 사람이 알아보게 자유롭게 둘 수 있습니다.
  */
 export function slugOf(post: Post): string {
-  return post.id.split('/').pop()!;
+  return String(post.data.postId);
 }
 
 export function urlOf(post: Post): string {
@@ -46,9 +48,8 @@ export async function getPublishedPosts(): Promise<Post[]> {
 }
 
 /**
- * URL이 파일 이름만으로 정해지므로, 폴더가 달라도 파일 이름이 겹치면
- * 두 글이 같은 주소를 갖게 됩니다. 조용히 한 글이 사라지는 대신
- * 빌드를 실패시켜 바로 알 수 있게 합니다.
+ * 글 번호가 겹치면 두 글이 같은 주소를 갖게 되어 하나가 조용히 사라집니다.
+ * 그런 상태로 배포되지 않도록 빌드를 실패시킵니다.
  */
 function assertUniqueSlugs(posts: Post[]): void {
   const seen = new Map<string, string>();
@@ -59,7 +60,7 @@ function assertUniqueSlugs(posts: Post[]): void {
       throw new Error(
         `글 파일 이름이 중복됩니다: "${slug}"\n` +
           `  - ${existing}\n  - ${post.id}\n` +
-          `파일 이름이 곧 주소이므로 폴더가 달라도 이름은 겹치면 안 됩니다.`,
+          `번호가 곧 주소이므로 겹치면 안 됩니다. 한쪽 번호를 바꾸세요.`,
       );
     }
     seen.set(slug, post.id);

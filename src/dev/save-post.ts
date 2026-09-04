@@ -1,6 +1,8 @@
 import type { APIRoute } from 'astro';
 import { mkdir, writeFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
+import { slugify, isValidSlug } from '../lib/slug.js';
+import { nextPostId } from '../lib/post-files.js';
 
 /**
  * 편집기에서 넘어온 글을 마크다운 파일로 저장합니다.
@@ -12,8 +14,7 @@ export const prerender = false;
 
 const POSTS_DIR = join(process.cwd(), 'src', 'content', 'posts');
 
-/** 파일 이름과 폴더 이름에 쓸 수 있는 형태인지 확인합니다. 경로 탈출을 막습니다. */
-const SLUG = /^[a-z0-9][a-z0-9-]*$/;
+/** 폴더 이름에 쓸 수 있는 형태인지 확인합니다. 경로 탈출을 막습니다. */
 const CATEGORY = /^[a-z0-9][a-z0-9/-]*$/;
 
 const json = (data: unknown, status = 200) =>
@@ -35,7 +36,9 @@ export const POST: APIRoute = async ({ request }) => {
   }
 
   const title = String(payload.title ?? '').trim();
-  const slug = String(payload.slug ?? '').trim();
+  // 파일 이름은 사람이 알아보기 위한 것이라 제목에서 만듭니다.
+  // 주소와는 무관하므로 나중에 바꿔도 링크가 깨지지 않습니다.
+  const slug = String(payload.slug ?? '').trim() || slugify(title) || 'post';
   const category = String(payload.category ?? '').trim().replace(/^\/+|\/+$/g, '');
   const description = String(payload.description ?? '').trim();
   const body = String(payload.body ?? '');
@@ -47,8 +50,8 @@ export const POST: APIRoute = async ({ request }) => {
   const overwrite = Boolean(payload.overwrite);
 
   if (!title) return json({ error: '제목을 입력하세요.' }, 400);
-  if (!SLUG.test(slug)) {
-    return json({ error: '주소 이름은 영문 소문자, 숫자, 하이픈만 쓸 수 있습니다.' }, 400);
+  if (!isValidSlug(slug)) {
+    return json({ error: `파일 이름을 만들 수 없습니다: "${slug}"` }, 400);
   }
   if (category && !CATEGORY.test(category)) {
     return json({ error: '카테고리 폴더 이름이 올바르지 않습니다.' }, 400);
@@ -60,6 +63,11 @@ export const POST: APIRoute = async ({ request }) => {
   const dir = category ? join(POSTS_DIR, ...category.split('/')) : POSTS_DIR;
   const fileName = `${date}-${slug}.md`;
   const filePath = join(dir, fileName);
+
+  // 글 번호가 곧 주소입니다. 다시 저장할 때 주소가 바뀌면 안 되므로
+  // 편집기가 들고 있던 번호를 그대로 쓰고, 없을 때만 새로 매깁니다.
+  const givenId = Number(payload.postId);
+  const postId = Number.isInteger(givenId) && givenId > 0 ? givenId : nextPostId(POSTS_DIR);
 
   // 실수로 기존 글을 덮어쓰지 않도록, 처음 저장할 때는 막고 물어봅니다.
   if (!overwrite) {
@@ -74,6 +82,7 @@ export const POST: APIRoute = async ({ request }) => {
   const quote = (s: string) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const frontmatter = [
     '---',
+    `postId: ${postId}`,
     `title: "${quote(title)}"`,
     `description: "${quote(description)}"`,
     `date: ${date}`,
@@ -95,7 +104,8 @@ export const POST: APIRoute = async ({ request }) => {
   return json({
     ok: true,
     path: filePath.replace(process.cwd() + '\\', '').replace(process.cwd() + '/', ''),
-    url: `/posts/${date}-${slug}/`,
+    url: `/posts/${postId}/`,
+    postId,
     draft,
   });
 };
