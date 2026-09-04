@@ -589,11 +589,16 @@ const today = (() => {
           const ready = await waitUntilReady(result.url);
           setStatusWithLink(ready ? '출간됨' : '출간됨 (페이지 반영이 늦어집니다)', result.url);
 
-          if (ready) window.open(result.url, '_blank');
-
           if (autoDeploy?.checked) {
             await deploy(`${editingId ? '글 수정' : '새 글'}: ${payload.title}`);
           }
+
+          /*
+           * 새 탭(window.open)은 브라우저가 팝업으로 보고 막습니다.
+           * 저장·배포를 기다리는 동안 '사용자가 누른 직후'가 아니게 되기 때문입니다.
+           * 현재 탭에서 옮겨가면 막히지 않습니다.
+           */
+          if (ready) location.href = result.url;
         };
 
         $<HTMLButtonElement>('save-draft')?.addEventListener('click', () => save(true));
@@ -635,9 +640,12 @@ const today = (() => {
         // ── 배포 (git add / commit / push) ──
         const autoDeploy = $<HTMLInputElement>('auto-deploy');
 
+        // 기본값은 켜짐입니다. 출간 = 사이트에 올라감 이라는 기대에 맞춥니다.
         try {
-          if (autoDeploy) autoDeploy.checked = localStorage.getItem('auto-deploy') === 'on';
-        } catch { /* 무시 */ }
+          if (autoDeploy) autoDeploy.checked = localStorage.getItem('auto-deploy') !== 'off';
+        } catch {
+          if (autoDeploy) autoDeploy.checked = true;
+        }
 
         autoDeploy?.addEventListener('change', () => {
           try { localStorage.setItem('auto-deploy', autoDeploy.checked ? 'on' : 'off'); } catch { /* 무시 */ }

@@ -228,10 +228,15 @@ export const POST: APIRoute = async ({ request }) => {
 
         const git = (args: string[]) => run('git', args, { cwd: ROOT, timeout: 120000 });
 
-        await git(['add', '-A']);
+        /*
+         * 글과 카테고리 설정만 담습니다.
+         * `git add -A` 로 전부 담으면 손보던 코드까지 딸려 올라갑니다.
+         * 글 하나 올리려다 미완성 코드가 배포되는 사고를 막기 위한 제한입니다.
+         */
+        await git(['add', '--', 'src/content/posts', 'src/config.ts']);
 
-        // 바뀐 게 없으면 커밋이 실패합니다. 그건 오류가 아니라 정상 상황입니다.
-        const status = await git(['status', '--porcelain']);
+        // 담긴 게 없으면 커밋할 것도 없습니다. 오류가 아니라 정상 상황입니다.
+        const status = await git(['diff', '--cached', '--name-only']);
         if (!status.stdout.trim()) {
           const ahead = await git(['rev-list', '--count', '@{u}..HEAD']).catch(() => ({ stdout: '0' }));
           if (Number(ahead.stdout.trim()) === 0) {
