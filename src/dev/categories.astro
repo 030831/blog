@@ -1,7 +1,9 @@
 ---
 /**
  * 카테고리 관리 화면. 개발 서버에서만 열립니다.
- * 추가 / 이름 바꾸기 / 삭제를 하고, 폴더와 src/config.ts 를 함께 고칩니다.
+ *
+ * 글쓴이는 **이름과 부모만** 정합니다.
+ * 저장소 폴더 이름은 이름에서 자동으로 만들어집니다.
  */
 import '../styles/global.css';
 
@@ -26,7 +28,7 @@ const isDev = import.meta.env.DEV;
           <a href="/categories" class="back">← 카테고리</a>
           <h1>카테고리 관리</h1>
           <p class="lead">
-            폴더가 곧 카테고리입니다. 여기서 바꾸면 폴더와 <code>src/config.ts</code> 가 함께 고쳐집니다.
+            이름과 부모만 정하면 됩니다. 저장소 폴더는 자동으로 만들어집니다.
             글 주소는 번호라서 카테고리를 옮겨도 링크가 깨지지 않습니다.
           </p>
         </header>
@@ -35,12 +37,12 @@ const isDev = import.meta.env.DEV;
           <h2>새 카테고리</h2>
           <form id="add-form" class="row">
             <label>
-              <span>폴더 이름</span>
-              <input id="add-path" type="text" placeholder="backend/mysql" autocomplete="off" required />
+              <span>이름</span>
+              <input id="add-name" type="text" placeholder="MySQL" autocomplete="off" required />
             </label>
             <label>
-              <span>보이는 이름</span>
-              <input id="add-label" type="text" placeholder="MySQL" autocomplete="off" />
+              <span>부모 카테고리</span>
+              <select id="add-parent"></select>
             </label>
             <button type="submit" class="btn primary">추가</button>
           </form>
@@ -57,21 +59,13 @@ const isDev = import.meta.env.DEV;
     )}
 
     <style is:global>
-      .wrap { max-width: 44rem; margin-inline: auto; padding: 3rem 1.5rem 5rem; }
+      .wrap { max-width: 46rem; margin-inline: auto; padding: 3rem 1.5rem 5rem; }
 
       .head { margin-bottom: 2rem; }
       .back { font-size: .85rem; color: var(--text-muted); }
       .back:hover { color: var(--accent); }
       .head h1 { margin: .6rem 0 0; font-size: 1.8rem; font-weight: 800; letter-spacing: -0.03em; }
       .lead { margin: .7rem 0 0; color: var(--text-muted); font-size: .9rem; line-height: 1.7; }
-      .lead code {
-        font-family: var(--font-mono);
-        font-size: .875em;
-        background: var(--bg-subtle);
-        border: 1px solid var(--border);
-        border-radius: 4px;
-        padding: .1em .35em;
-      }
 
       .panel {
         padding: 1.4rem 1.5rem;
@@ -93,7 +87,8 @@ const isDev = import.meta.env.DEV;
       .row label { display: grid; gap: .3rem; flex: 1; min-width: 10rem; }
       .row span { font-size: .78rem; color: var(--text-faint); }
 
-      input[type='text'] {
+      input[type='text'],
+      select {
         width: 100%;
         padding: .5rem .7rem;
         border: 1px solid var(--border);
@@ -103,7 +98,9 @@ const isDev = import.meta.env.DEV;
         font-size: .875rem;
         color: var(--text);
       }
-      input[type='text']:focus {
+      select { cursor: pointer; }
+      input[type='text']:focus,
+      select:focus {
         outline: none;
         border-color: var(--accent);
         box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
@@ -117,6 +114,7 @@ const isDev = import.meta.env.DEV;
         font-size: .85rem;
         font-weight: 700;
         cursor: pointer;
+        white-space: nowrap;
         transition: background .18s ease, color .18s ease, border-color .18s ease;
       }
       .btn.primary { background: var(--accent); color: #fff; }
@@ -138,15 +136,18 @@ const isDev = import.meta.env.DEV;
       }
       .list li:last-child { border-bottom: 0; }
 
+      .cat-label { font-weight: 600; font-size: .95rem; min-width: 10rem; }
       .cat-path {
         font-family: var(--font-mono);
-        font-size: .8rem;
+        font-size: .75rem;
         color: var(--text-faint);
-        min-width: 11rem;
       }
-      .cat-label { font-weight: 600; font-size: .95rem; }
       .cat-count { font-size: .75rem; color: var(--text-faint); }
       .cat-actions { margin-left: auto; display: flex; gap: .4rem; }
+
+      /* 한 줄을 고칠 때 그 자리에서 바로 바꿉니다. */
+      .edit-row { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; width: 100%; }
+      .edit-row input, .edit-row select { width: auto; flex: 1; min-width: 8rem; }
 
       .empty { color: var(--text-muted); font-size: .9rem; margin: 0; }
 
@@ -156,11 +157,17 @@ const isDev = import.meta.env.DEV;
     </style>
 
     <script>
+      interface Category { path: string; label: string; count: number; }
+
       const list = document.getElementById('list');
       const empty = document.getElementById('empty');
       const status = document.getElementById('status');
+      const addParent = document.getElementById('add-parent') as HTMLSelectElement | null;
 
-      if (list && empty && status) {
+      if (list && empty && status && addParent) {
+        const INDENT = '    ';
+        let categories: Category[] = [];
+
         const setStatus = (message: string, kind: '' | 'ok' | 'error' = '') => {
           status.textContent = message;
           status.className = `status ${kind}`;
@@ -175,24 +182,95 @@ const isDev = import.meta.env.DEV;
           return { ok: response.ok, data: await response.json() };
         };
 
+        const depthOf = (path: string) => path.split('/').length - 1;
+        const parentOf = (path: string) => path.split('/').slice(0, -1).join('/');
+
+        /**
+         * 부모를 고르는 목록. 값은 폴더 경로지만 화면에는 이름만 보입니다.
+         * 자기 자신과 자기 하위는 뺍니다 — 폴더가 자기 안으로 들어가 버립니다.
+         */
+        const fillParentOptions = (select: HTMLSelectElement, selected: string, exclude = '') => {
+          select.innerHTML = '';
+
+          const none = document.createElement('option');
+          none.value = '';
+          none.textContent = '없음 (최상위)';
+          select.append(none);
+
+          for (const category of categories) {
+            if (exclude && (category.path === exclude || category.path.startsWith(exclude + '/'))) continue;
+
+            const option = document.createElement('option');
+            option.value = category.path;
+            const depth = depthOf(category.path);
+            option.textContent = INDENT.repeat(depth) + (depth ? '└ ' : '') + category.label;
+            select.append(option);
+          }
+
+          select.value = selected;
+        };
+
+        /** 한 줄을 그 자리에서 수정 상태로 바꿉니다. */
+        const startEdit = (li: HTMLLIElement, category: Category) => {
+          li.innerHTML = '';
+
+          const row = document.createElement('div');
+          row.className = 'edit-row';
+
+          const nameInput = document.createElement('input');
+          nameInput.type = 'text';
+          nameInput.value = category.label;
+
+          const parentSelect = document.createElement('select');
+          fillParentOptions(parentSelect, parentOf(category.path), category.path);
+
+          const saveButton = document.createElement('button');
+          saveButton.className = 'btn primary small';
+          saveButton.textContent = '저장';
+          saveButton.addEventListener('click', async () => {
+            setStatus('저장하는 중…');
+            const { ok, data } = await manage({
+              action: 'rename-category',
+              path: category.path,
+              name: nameInput.value.trim(),
+              parent: parentSelect.value,
+            });
+            if (!ok) return setStatus(data.error ?? '저장하지 못했습니다.', 'error');
+            setStatus(`저장되었습니다: ${data.name}`, 'ok');
+            render();
+          });
+
+          const cancelButton = document.createElement('button');
+          cancelButton.className = 'btn ghost small';
+          cancelButton.textContent = '취소';
+          cancelButton.addEventListener('click', () => render());
+
+          row.append(nameInput, parentSelect, saveButton, cancelButton);
+          li.append(row);
+          nameInput.focus();
+        };
+
         const render = async () => {
           const { ok, data } = await manage({ action: 'list-categories' });
           if (!ok) return setStatus(data.error ?? '목록을 불러오지 못했습니다.', 'error');
 
-          const categories = data.categories as { path: string; label: string; count: number }[];
+          categories = data.categories as Category[];
           empty.hidden = categories.length > 0;
           list.innerHTML = '';
+          fillParentOptions(addParent, addParent.value);
 
           for (const category of categories) {
             const li = document.createElement('li');
 
+            const label = document.createElement('span');
+            label.className = 'cat-label';
+            const depth = depthOf(category.path);
+            label.textContent = INDENT.repeat(depth) + (depth ? '└ ' : '') + category.label;
+
             const path = document.createElement('span');
             path.className = 'cat-path';
             path.textContent = category.path;
-
-            const label = document.createElement('span');
-            label.className = 'cat-label';
-            label.textContent = category.label;
+            path.title = '저장소 폴더 이름 (이름에서 자동으로 만들어집니다)';
 
             const count = document.createElement('span');
             count.className = 'cat-count';
@@ -201,68 +279,43 @@ const isDev = import.meta.env.DEV;
             const actions = document.createElement('div');
             actions.className = 'cat-actions';
 
-            const renameButton = document.createElement('button');
-            renameButton.className = 'btn ghost small';
-            renameButton.textContent = '이름 바꾸기';
-            renameButton.addEventListener('click', () => rename(category));
+            const editButton = document.createElement('button');
+            editButton.className = 'btn ghost small';
+            editButton.textContent = '수정';
+            editButton.addEventListener('click', () => startEdit(li, category));
 
             const deleteButton = document.createElement('button');
             deleteButton.className = 'btn danger small';
             deleteButton.textContent = '삭제';
-            deleteButton.addEventListener('click', () => remove(category));
+            deleteButton.addEventListener('click', async () => {
+              if (!confirm(`'${category.label}' 카테고리를 삭제할까요?`)) return;
+              setStatus('삭제 중…');
+              const { ok, data } = await manage({ action: 'delete-category', path: category.path });
+              if (!ok) return setStatus(data.error ?? '삭제하지 못했습니다.', 'error');
+              setStatus('삭제되었습니다.', 'ok');
+              render();
+            });
 
-            actions.append(renameButton, deleteButton);
-            li.append(path, label, count, actions);
+            actions.append(editButton, deleteButton);
+            li.append(label, path, count, actions);
             list.append(li);
           }
         };
 
-        const rename = async (category: { path: string; label: string }) => {
-          const label = prompt('보이는 이름', category.label);
-          if (label === null) return;
-          const newPath = prompt('폴더 이름 (그대로 두려면 확인)', category.path);
-          if (newPath === null) return;
-
-          setStatus('바꾸는 중…');
-          const { ok, data } = await manage({
-            action: 'rename-category',
-            path: category.path,
-            label,
-            newPath,
-          });
-          if (!ok) return setStatus(data.error ?? '바꾸지 못했습니다.', 'error');
-
-          setStatus(`바뀌었습니다: ${data.path}`, 'ok');
-          render();
-        };
-
-        const remove = async (category: { path: string; count: number }) => {
-          if (!confirm(`'${category.path}' 카테고리를 삭제할까요?`)) return;
-
-          setStatus('삭제 중…');
-          const { ok, data } = await manage({ action: 'delete-category', path: category.path });
-          if (!ok) return setStatus(data.error ?? '삭제하지 못했습니다.', 'error');
-
-          setStatus('삭제되었습니다.', 'ok');
-          render();
-        };
-
         document.getElementById('add-form')?.addEventListener('submit', async (event) => {
           event.preventDefault();
-          const pathInput = document.getElementById('add-path') as HTMLInputElement;
-          const labelInput = document.getElementById('add-label') as HTMLInputElement;
+          const nameInput = document.getElementById('add-name') as HTMLInputElement;
 
           setStatus('추가하는 중…');
           const { ok, data } = await manage({
             action: 'add-category',
-            path: pathInput.value.trim(),
-            label: labelInput.value.trim(),
+            name: nameInput.value.trim(),
+            parent: addParent.value,
           });
           if (!ok) return setStatus(data.error ?? '추가하지 못했습니다.', 'error');
 
-          pathInput.value = '';
-          labelInput.value = '';
-          setStatus(`추가되었습니다: ${data.path}`, 'ok');
+          nameInput.value = '';
+          setStatus(`추가되었습니다: ${data.name} (${data.path})`, 'ok');
           render();
         });
 

@@ -5,6 +5,7 @@ import { join, relative, sep, dirname } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { findPostFiles, categoryFolders } from '../lib/post-files.js';
+import { slugify } from '../lib/slug.js';
 
 /**
  * 글 삭제, 카테고리 관리, 배포를 담당합니다.
@@ -50,6 +51,24 @@ async function removeEmptyFolders(dir: string) {
     await rmdir(current).catch(() => {});
     current = dirname(current);
   }
+}
+
+/**
+ * 보이는 이름에서 폴더 이름을 만듭니다.
+ *
+ * 폴더 이름은 저장소에서만 보이는 값이라 글쓴이가 정할 이유가 없습니다.
+ * 한글 이름은 로마자로 옮기고, 이미 있으면 뒤에 숫자를 붙입니다.
+ */
+function folderNameFor(name: string, parent: string): string {
+  const base = slugify(name) || 'category';
+  const prefix = parent ? `${parent}/` : '';
+
+  let candidate = base;
+  let n = 2;
+  while (existsSync(join(POSTS_DIR, ...(prefix + candidate).split('/')))) {
+    candidate = `${base}-${n++}`;
+  }
+  return prefix + candidate;
 }
 
 /** config.ts 의 CATEGORY_LABELS 를 통째로 다시 씁니다. */
@@ -135,45 +154,71 @@ export const POST: APIRoute = async ({ request }) => {
 
       // ── 카테고리 추가 ──
       case 'add-category': {
-        const path = String(payload.path ?? '').trim().replace(/^\/+|\/+$/g, '');
-        const label = String(payload.label ?? '').trim();
-        if (!CATEGORY.test(path)) return json({ error: '폴더 이름은 영문 소문자, 숫자, 하이픈, 슬래시만 됩니다.' }, 400);
+        const name = String(payload.name ?? '').trim();
+        const parent = String(payload.parent ?? '').trim().replace(/^\/+|\/+$/g, '');
 
-        const dir = join(POSTS_DIR, ...path.split('/'));
-        if (existsSync(dir)) return json({ error: '이미 있는 카테고리입니다.' }, 409);
-
-        await mkdir(dir, { recursive: true });
-        // 빈 폴더는 Git이 추적하지 않아 다른 컴퓨터에서 사라집니다. 표시용 파일을 둡니다.
-        await writeFile(join(dir, '.gitkeep'), '', 'utf8');
-
-        if (label) {
-          const labels = await readLabels();
-          labels[path] = label;
-          await writeLabels(labels);
+        if (!name) return json({ error: '카테고리 이름을 입력하세요.' }, 400);
+        if (parent && !CATEGORY.test(parent)) return json({ error: '부모 카테고리가 잘못되었습니다.' }, 400);
+        if (parent && !existsSync(join(POSTS_DIR, ...parent.split('/')))) {
+          return json({ error: '부모 카테고리를 찾을 수 없습니다.' }, 404);
         }
-        return json({ ok: true, path });
+
+        const labels = await readLabels();
+        // 같은 부모 아래 같은 이름이 있으면 막습니다. 폴더가 달라도 화면에서는 구분되지 않습니다.
+        for (const [existingPath, existingLabel] of Object.entries(labels)) {
+          const existingParent = existingPath.split('/').slice(0, -1).join('/');
+          if (existingParent === parent && existingLabel === name) {
+            return json({ error: `'${name}' 은(는) 이미 있습니다.` }, 409);
+          }
+        }
+
+        const path = folderNameFor(name, parent);
+        await mkdir(join(POSTS_DIR, ...path.split('/')), { recursive: true });
+        // 빈 폴더는 Git이 추적하지 않아 다른 컴퓨터에서 사라집니다. 표시용 파일을 둡니다.
+        await writeFile(join(POSTS_DIR, ...path.split('/'), '.gitkeep'), '', 'utf8');
+
+        labels[path] = name;
+        await writeLabels(labels);
+        return json({ ok: true, path, name });
       }
 
       // ── 카테고리 이름 바꾸기 (표시 이름 / 폴더 이름) ──
       case 'rename-category': {
         const path = String(payload.path ?? '').trim();
-        const label = String(payload.label ?? '').trim();
-        const newPath = String(payload.newPath ?? '').trim().replace(/^\/+|\/+$/g, '');
+        const name = String(payload.name ?? '').trim();
+        // 부모를 바꾸지 않을 때는 parent 를 보내지 않습니다. 빈 문자열은 '최상위로'라는 뜻입니다.
+        const moveParent = payload.parent !== undefined;
+        const parent = String(payload.parent ?? '').trim().replace(/^\/+|\/+$/g, '');
 
         if (!CATEGORY.test(path)) return json({ error: '카테고리 경로가 잘못되었습니다.' }, 400);
+        if (!name) return json({ error: '카테고리 이름을 입력하세요.' }, 400);
+
         const dir = join(POSTS_DIR, ...path.split('/'));
         if (!existsSync(dir)) return json({ error: '없는 카테고리입니다.' }, 404);
 
         const labels = await readLabels();
         let finalPath = path;
 
-        // 폴더 이름을 바꾸면 그 아래 글이 통째로 따라갑니다.
-        // 주소는 글 번호라서 옮겨도 링크가 깨지지 않습니다.
-        if (newPath && newPath !== path) {
-          if (!CATEGORY.test(newPath)) return json({ error: '새 폴더 이름이 잘못되었습니다.' }, 400);
-          const target = join(POSTS_DIR, ...newPath.split('/'));
-          if (existsSync(target)) return json({ error: '그 이름의 카테고리가 이미 있습니다.' }, 409);
+        const currentParent = path.split('/').slice(0, -1).join('/');
 
+        if (moveParent && parent !== currentParent) {
+          if (parent && !CATEGORY.test(parent)) return json({ error: '부모 카테고리가 잘못되었습니다.' }, 400);
+
+          // 자기 자신이나 자기 하위로는 옮길 수 없습니다. 폴더가 자기 안으로 들어갑니다.
+          if (parent === path || parent.startsWith(path + '/')) {
+            return json({ error: '자기 자신이나 하위 카테고리로는 옮길 수 없습니다.' }, 400);
+          }
+          if (parent && !existsSync(join(POSTS_DIR, ...parent.split('/')))) {
+            return json({ error: '부모 카테고리를 찾을 수 없습니다.' }, 404);
+          }
+
+          const folder = path.split('/').pop()!;
+          const newPath = parent ? `${parent}/${folder}` : folder;
+          const target = join(POSTS_DIR, ...newPath.split('/'));
+          if (existsSync(target)) return json({ error: '그곳에 같은 폴더가 이미 있습니다.' }, 409);
+
+          // 폴더를 옮기면 그 아래 글이 통째로 따라갑니다.
+          // 주소는 글 번호라서 옮겨도 링크가 깨지지 않습니다.
           await mkdir(dirname(target), { recursive: true });
           await rename(dir, target);
           await removeEmptyFolders(dirname(dir));
@@ -188,9 +233,11 @@ export const POST: APIRoute = async ({ request }) => {
           finalPath = newPath;
         }
 
-        if (label) labels[finalPath] = label;
+        // 보이는 이름만 바꿀 때는 폴더를 그대로 둡니다.
+        // 폴더까지 따라 바꾸면 저장소 이력이 불필요하게 지저분해집니다.
+        labels[finalPath] = name;
         await writeLabels(labels);
-        return json({ ok: true, path: finalPath });
+        return json({ ok: true, path: finalPath, name });
       }
 
       // ── 카테고리 삭제 ──
