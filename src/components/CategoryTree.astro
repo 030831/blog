@@ -26,122 +26,127 @@ function relativeLabels(path: string): string[] {
 const rows = nodes.map((root) => ({ root, descendants: descendantsOf(root) }));
 ---
 
-<ul class="list">
+<div class="tree">
   {rows.map(({ root, descendants }) => (
-    <li class="row">
+    <div class="row">
       <a
         href={urlOfCategory(root.path)}
-        class:list={['root', { current: current === root.path }]}
+        class:list={['btn root', { current: current === root.path }]}
         aria-current={current === root.path ? 'page' : undefined}
       >
-        <span class="name">{root.label}</span>
-        <span class="count">{root.totalCount}</span>
+        <span class="text">{root.label}</span>
+        <span class="n">{root.totalCount}</span>
       </a>
 
-      {descendants.length > 0 && (
-        <div class="children">
-          {descendants.map((node) => (
-            <a
-              href={urlOfCategory(node.path)}
-              class:list={['child', { current: current === node.path }]}
-              aria-current={current === node.path ? 'page' : undefined}
-            >
+      <div class="children">
+        {descendants.map((node) => (
+          <a
+            href={urlOfCategory(node.path)}
+            class:list={['btn child', { current: current === node.path }]}
+            aria-current={current === node.path ? 'page' : undefined}
+          >
+            <span class="text">
               {relativeLabels(node.path).map((label, i) => (
                 <>
                   {i > 0 && <span class="sep" aria-hidden="true">›</span>}
                   <span class="seg">{label}</span>
                 </>
               ))}
-              <span class="n">{node.totalCount}</span>
-            </a>
-          ))}
-        </div>
-      )}
-    </li>
+            </span>
+            <span class="n">{node.totalCount}</span>
+          </a>
+        ))}
+      </div>
+    </div>
   ))}
-</ul>
+</div>
 
 <style>
   /*
-   * 각 최상위 카테고리가 한 행을 차지하고, 행은 가로 폭을 끝까지 씁니다.
-   * 2열 격자로 만들었더니 카테고리가 적을 때 오른쪽이 텅 비어
-   * 표가 깨진 것처럼 보여서 이 구조로 바꿨습니다.
-   * 하위는 행 아래에 가로로 흐르다 넘치면 접힙니다.
+   * 최상위와 하위 모두 버튼입니다. 둘의 차이는 모양이 아니라 채움으로 냅니다.
+   * 최상위는 채운 버튼, 하위는 테두리 버튼.
+   * 왼쪽 열을 맞춰 최상위가 세로로 정렬되고, 하위는 오른쪽으로 흐르다 접힙니다.
    */
-  .list { list-style: none; margin: 0; padding: 0; }
+  .tree {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: .5rem .6rem;
+    align-items: start;
+  }
+  .row { display: contents; }
 
-  .row { border-bottom: 1px solid var(--border); }
-  .row:last-child { border-bottom: 0; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .34rem .8rem;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    font-size: .875rem;
+    white-space: nowrap;
+    transition:
+      color .18s ease,
+      background .18s ease,
+      border-color .18s ease,
+      box-shadow .18s ease;
+  }
 
-  /* ── 최상위: 이름은 왼쪽, 개수는 오른쪽 끝 ── */
+  /* ── 최상위: 채운 버튼 ── */
   .root {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: .8rem .7rem;
-    border-radius: var(--radius-sm);
-    transition: color .18s ease, background .18s ease, padding-left .2s ease;
+    background: var(--text);
+    border-color: var(--text);
+    color: var(--bg);
+    font-weight: 600;
   }
-  .root:hover { background: var(--bg-subtle); padding-left: 1.05rem; }
-  .root:hover .name { color: var(--accent); }
+  .root:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 3px 12px color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+  .root .n { opacity: .55; }
+  .root.current { background: var(--accent); border-color: var(--accent); color: #fff; }
 
-  .name {
-    font-size: 1rem;
-    font-weight: 700;
-    letter-spacing: -0.015em;
-    transition: color .18s ease;
-  }
-  .count {
-    flex-shrink: 0;
-    font-size: .78rem;
-    color: var(--text-faint);
-    font-variant-numeric: tabular-nums;
-  }
-  .root.current .name { color: var(--accent); }
-
-  /* ── 하위: 작은 알약으로 가로 흐름 ── */
+  /* ── 하위: 테두리 버튼 ── */
   .children {
     display: flex;
     flex-wrap: wrap;
-    gap: .3rem .4rem;
-    padding: 0 .7rem .85rem 1.1rem;
-  }
-
-  .child {
-    display: inline-flex;
+    gap: .35rem;
+    min-height: 1.9rem;
     align-items: center;
-    gap: .3rem;
-    padding: .22rem .65rem;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    font-size: .82rem;
+  }
+  .child {
+    border-color: var(--border-strong);
     color: var(--text-muted);
-    transition: color .18s ease, background .18s ease, border-color .18s ease;
   }
   .child:hover {
     color: var(--accent);
-    background: var(--accent-soft);
     border-color: var(--accent);
+    background: var(--accent-soft);
   }
   .child.current {
     color: var(--accent);
-    background: var(--accent-soft);
     border-color: var(--accent);
+    background: var(--accent-soft);
     font-weight: 600;
   }
 
   /* 경로가 깊어지면 앞쪽 조각을 흐리게 해 마지막 이름이 먼저 읽히게 합니다. */
   .child .seg:not(:last-of-type) { color: var(--text-faint); }
-  .sep { color: var(--text-faint); font-size: .78em; margin-inline: .04rem; }
+  .sep { color: var(--text-faint); font-size: .8em; margin-inline: .05rem; }
 
-  .n { font-size: .68rem; color: var(--text-faint); font-variant-numeric: tabular-nums; }
-
-  @media (prefers-reduced-motion: reduce) {
-    .root:hover { padding-left: .7rem; }
+  .n {
+    font-size: .7rem;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
   }
+  .child.current .n { color: inherit; opacity: .7; }
 
   @media (max-width: 34rem) {
-    .children { padding-left: .9rem; }
+    .tree { grid-template-columns: 1fr; gap: .3rem; }
+    .row { display: block; }
+    .row + .row { margin-top: .9rem; }
+    .children { padding: .4rem 0 0 .8rem; min-height: 0; }
+    .children:empty { display: none; }
   }
 </style>

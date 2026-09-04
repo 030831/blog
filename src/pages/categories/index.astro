@@ -14,15 +14,13 @@ const total = tree.reduce((sum, node) => sum + node.totalCount, 0);
       <p>{tree.length}개 주제 · 글 {total}개</p>
     </header>
 
-    <div class="panel">
-      {tree.length === 0 ? (
-        <p class="empty">아직 카테고리가 없습니다. 글을 폴더에 넣으면 자동으로 만들어집니다.</p>
-      ) : (
-        <nav aria-label="카테고리">
-          <CategoryTree nodes={tree} />
-        </nav>
-      )}
-    </div>
+    {tree.length === 0 ? (
+      <p class="empty">아직 카테고리가 없습니다. 글을 폴더에 넣으면 자동으로 만들어집니다.</p>
+    ) : (
+      <nav aria-label="카테고리">
+        <CategoryTree nodes={tree} />
+      </nav>
+    )}
   </div>
 </BaseLayout>
 
@@ -32,17 +30,6 @@ const total = tree.reduce((sum, node) => sum + node.totalCount, 0);
   .page-head { margin-bottom: 1.5rem; }
   .page-head p { margin: .9rem 0 0; color: var(--text-muted); font-size: .9rem; }
 
-  /* 경계를 분명히 하기 위해 트리를 박스 안에 담습니다. */
-  .panel {
-    padding: 1.4rem 1.5rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-  }
-
   .empty { margin: 0; color: var(--text-muted); padding-block: 1.5rem; text-align: center; }
 
-  @media (max-width: 34rem) {
-    .panel { padding: 1.1rem 1.1rem .6rem; }
-  }
 </style>
