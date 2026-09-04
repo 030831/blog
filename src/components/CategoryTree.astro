@@ -9,81 +9,60 @@ interface Props {
 
 const { nodes, current = '' } = Astro.props;
 
-/** 하위 전체를 한 줄로 펼칩니다. 깊이 순서를 유지해 위계가 읽히도록 합니다. */
-function descendantsOf(node: CategoryNode): CategoryNode[] {
-  return node.children.flatMap((child) => [child, ...descendantsOf(child)]);
+/** 하위 전체를 한 줄로 펼칩니다. 최상위 바로 뒤에 그 하위들이 오도록 순서를 유지합니다. */
+function withDescendants(node: CategoryNode): CategoryNode[] {
+  return [node, ...node.children.flatMap(withDescendants)];
 }
 
-/**
- * 최상위를 뺀 나머지 경로 이름들.
- * 'backend/spring/jpa' 를 backend 아래에서 보면 ['Spring', 'JPA'] 가 됩니다.
- * 들여쓰기 대신 경로를 그대로 보여줘서 깊어져도 자리를 더 먹지 않습니다.
- */
-function relativeLabels(path: string): string[] {
-  return breadcrumbOf(path).slice(1).map((step) => step.label);
-}
-
-const rows = nodes.map((root) => ({ root, descendants: descendantsOf(root) }));
+const items = nodes.flatMap(withDescendants);
 ---
 
 <div class="tree">
-  {rows.map(({ root, descendants }) => (
-    <div class="row">
-      <a
-        href={urlOfCategory(root.path)}
-        class:list={['btn root', { current: current === root.path }]}
-        aria-current={current === root.path ? 'page' : undefined}
-      >
-        <span class="text">{root.label}</span>
-        <span class="n">{root.totalCount}</span>
-      </a>
-
-      <div class="children">
-        {descendants.map((node) => (
-          <a
-            href={urlOfCategory(node.path)}
-            class:list={['btn child', { current: current === node.path }]}
-            aria-current={current === node.path ? 'page' : undefined}
-          >
-            <span class="text">
-              {relativeLabels(node.path).map((label, i) => (
-                <>
-                  {i > 0 && <span class="sep" aria-hidden="true">›</span>}
-                  <span class="seg">{label}</span>
-                </>
-              ))}
-            </span>
-            <span class="n">{node.totalCount}</span>
-          </a>
+  {items.map((node) => (
+    <a
+      href={urlOfCategory(node.path)}
+      class:list={['btn', { current: current === node.path }]}
+      aria-current={current === node.path ? 'page' : undefined}
+    >
+      <span class="text">
+        {/*
+          모든 버튼이 같은 모양이라 위치만으로는 상하위를 알 수 없습니다.
+          그래서 하위는 '백엔드 › Spring' 처럼 경로를 그대로 밝힙니다.
+        */}
+        {breadcrumbOf(node.path).map((step, i) => (
+          <>
+            {i > 0 && <span class="sep" aria-hidden="true">›</span>}
+            <span class="seg">{step.label}</span>
+          </>
         ))}
-      </div>
-    </div>
+      </span>
+      <span class="n">{node.totalCount}</span>
+    </a>
   ))}
 </div>
 
 <style>
   /*
-   * 최상위와 하위 모두 버튼입니다. 둘의 차이는 모양이 아니라 채움으로 냅니다.
-   * 최상위는 채운 버튼, 하위는 테두리 버튼.
-   * 왼쪽 열을 맞춰 최상위가 세로로 정렬되고, 하위는 오른쪽으로 흐르다 접힙니다.
+   * 모든 카테고리를 같은 버튼으로 두고 한 줄에 이어 붙입니다.
+   * 최상위를 왼쪽 열에 고정했더니 하위가 없는 카테고리에서 오른쪽이 비어
+   * 표가 깨진 것처럼 보여서, 열을 없애고 흐르게 했습니다.
    */
   .tree {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: .55rem .7rem;
-    align-items: start;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
   }
-  .row { display: contents; }
 
   .btn {
     display: inline-flex;
     align-items: center;
     gap: .45rem;
-    /* 카드와 같은 표면색을 씁니다. 라이트에서는 흰색, 다크에서는 카드와 같은 톤이라
-       어느 쪽에서도 버튼이 배경에서 뜨지 않습니다. */
+    padding: .5rem 1.15rem;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-strong);
     border-radius: 999px;
+    font-size: .925rem;
+    color: var(--text);
     white-space: nowrap;
     transition:
       color .18s ease,
@@ -91,68 +70,27 @@ const rows = nodes.map((root) => ({ root, descendants: descendantsOf(root) }));
       border-color .18s ease,
       box-shadow .18s ease;
   }
-
-  /* ── 최상위: 크고 굵게, 테두리도 진하게 ── */
-  .root {
-    padding: .55rem 1.25rem;
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--text);
-    border-color: var(--border-strong);
-  }
-  .root:hover {
+  .btn:hover {
     color: var(--accent);
     border-color: var(--accent);
     background: var(--accent-soft);
     box-shadow: 0 3px 12px color-mix(in srgb, var(--accent) 18%, transparent);
   }
-  .root.current {
+  .btn.current {
     color: var(--accent);
     border-color: var(--accent);
     background: var(--accent-soft);
+    font-weight: 700;
   }
 
-  /* ── 하위: 한 단계 작게 ── */
-  .children {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .4rem;
-    min-height: 2.5rem;
-    align-items: center;
-  }
-  .child {
-    padding: .42rem 1rem;
-    font-size: .9rem;
-    color: var(--text-muted);
-  }
-  .child:hover {
-    color: var(--accent);
-    border-color: var(--accent);
-    background: var(--accent-soft);
-  }
-  .child.current {
-    color: var(--accent);
-    border-color: var(--accent);
-    background: var(--accent-soft);
-    font-weight: 600;
-  }
-
-  /* 경로가 깊어지면 앞쪽 조각을 흐리게 해 마지막 이름이 먼저 읽히게 합니다. */
-  .child .seg:not(:last-of-type) { color: var(--text-faint); }
-  .sep { color: var(--text-faint); font-size: .8em; margin-inline: .05rem; }
+  /* 경로의 앞쪽은 흐리게 해서 마지막 이름이 먼저 읽히게 합니다. */
+  .seg:not(:last-of-type) { color: var(--text-faint); }
+  .sep { color: var(--text-faint); font-size: .82em; margin-inline: .1rem; }
 
   .n {
     font-size: .75rem;
     color: var(--text-faint);
     font-variant-numeric: tabular-nums;
   }
-  .child.current .n { color: inherit; opacity: .7; }
-
-  @media (max-width: 34rem) {
-    .tree { grid-template-columns: 1fr; gap: .3rem; }
-    .row { display: block; }
-    .row + .row { margin-top: .9rem; }
-    .children { padding: .4rem 0 0 .8rem; min-height: 0; }
-    .children:empty { display: none; }
-  }
+  .btn.current .n { color: inherit; opacity: .7; }
 </style>

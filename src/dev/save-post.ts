@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
-import { mkdir, writeFile, access } from 'node:fs/promises';
-import { join } from 'node:path';
+import { mkdir, writeFile, access, unlink } from 'node:fs/promises';
+import { join, relative, sep } from 'node:path';
 import { slugify, isValidSlug } from '../lib/slug.js';
 import { nextPostId } from '../lib/post-files.js';
 
@@ -48,6 +48,8 @@ export const POST: APIRoute = async ({ request }) => {
     ? payload.tags.map((t) => String(t).trim()).filter(Boolean)
     : [];
   const overwrite = Boolean(payload.overwrite);
+  // 글을 고칠 때 편집기가 원래 파일 위치를 함께 보냅니다.
+  const originalPath = String(payload.originalPath ?? '').trim();
 
   if (!title) return json({ error: '제목을 입력하세요.' }, 400);
   if (!isValidSlug(slug)) {
@@ -69,8 +71,12 @@ export const POST: APIRoute = async ({ request }) => {
   const givenId = Number(payload.postId);
   const postId = Number.isInteger(givenId) && givenId > 0 ? givenId : nextPostId(POSTS_DIR);
 
-  // 실수로 기존 글을 덮어쓰지 않도록, 처음 저장할 때는 막고 물어봅니다.
-  if (!overwrite) {
+  // 고치는 중인 글은 자기 자신을 덮어쓰는 것이므로 묻지 않습니다.
+  const editingSameFile =
+    originalPath && join(POSTS_DIR, ...originalPath.split('/')) === filePath;
+
+  // 실수로 다른 글을 덮어쓰지 않도록, 처음 저장할 때는 막고 물어봅니다.
+  if (!overwrite && !editingSameFile) {
     try {
       await access(filePath);
       return json({ error: '같은 이름의 글이 이미 있습니다.', exists: true }, 409);
@@ -97,13 +103,20 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     await mkdir(dir, { recursive: true });
     await writeFile(filePath, frontmatter, 'utf8');
+
+    // 제목이나 카테고리가 바뀌어 파일 위치가 달라졌다면 예전 파일을 지웁니다.
+    // 그대로 두면 같은 번호의 글이 두 개가 되어 빌드가 실패합니다.
+    if (originalPath && !editingSameFile) {
+      await unlink(join(POSTS_DIR, ...originalPath.split('/'))).catch(() => {});
+    }
   } catch (error) {
     return json({ error: `파일을 저장하지 못했습니다: ${(error as Error).message}` }, 500);
   }
 
   return json({
     ok: true,
-    path: filePath.replace(process.cwd() + '\\', '').replace(process.cwd() + '/', ''),
+    // posts 폴더 기준 슬래시 경로. 편집기가 그대로 다시 보내 예전 파일을 찾습니다.
+    path: relative(POSTS_DIR, filePath).split(sep).join('/'),
     url: `/posts/${postId}/`,
     postId,
     draft,

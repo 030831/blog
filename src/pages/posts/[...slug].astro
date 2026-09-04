@@ -36,6 +36,16 @@ const minutes = readingTime(post.body ?? '');
       <h1>{post.data.title}</h1>
 
       <div class="meta">
+        {import.meta.env.DEV && (
+          <a href={`/editor?id=${post.data.postId}`} class="edit-link">
+            <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+              <path d="M11.2 2.4a1.4 1.4 0 0 1 2 2L6 11.6l-2.7.7.7-2.7Z"
+                    fill="none" stroke="currentColor" stroke-width="1.4"
+                    stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            수정
+          </a>
+        )}
         <FormattedDate date={post.data.date} />
         <span aria-hidden="true">·</span>
         <span>약 {minutes}분</span>
@@ -93,6 +103,20 @@ const minutes = readingTime(post.body ?? '');
     font-size: .875rem;
     color: var(--text-faint);
   }
+  /* 개발 서버에서만 보이는 수정 링크. 배포본에는 렌더링되지 않습니다. */
+  .edit-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .1rem .5rem;
+    border: 1px dashed var(--border-strong);
+    border-radius: 999px;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: color .18s ease, border-color .18s ease, background .18s ease;
+  }
+  .edit-link:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
   .tags {
     display: flex;
     flex-wrap: wrap;

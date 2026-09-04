@@ -120,7 +120,8 @@ const today = (() => {
             </label>
 
             <span class="post-no" title="이 글의 주소가 됩니다">
-              주소 <code id="post-url">/posts/{newPostId}/</code>
+              <span id="mode-label">새 글</span>
+              <code id="post-url">/posts/{newPostId}/</code>
             </span>
             <input id="post-id" type="hidden" value={String(newPostId)} />
 
@@ -530,6 +531,7 @@ const today = (() => {
             body: bodyInput.value,
             draft,
             overwrite,
+            originalPath,
           };
 
           if (!payload.title) return setStatus('제목을 입력하세요.', 'error');
@@ -552,6 +554,9 @@ const today = (() => {
 
           if (!response.ok) return setStatus(result.error ?? '저장에 실패했습니다.', 'error');
 
+          // 파일 위치가 바뀌었을 수 있으므로 다음 저장을 위해 갱신합니다.
+          if (result.path) originalPath = result.path;
+
           if (draft) {
             return setStatus(`임시저장됨 · ${result.path}`, 'ok');
           }
@@ -568,8 +573,45 @@ const today = (() => {
         $<HTMLButtonElement>('save-draft')?.addEventListener('click', () => save(true));
         $<HTMLButtonElement>('publish')?.addEventListener('click', () => save(false));
 
-        restoreLocal();
-        render();
+        // ── 기존 글 불러오기 ──
+        // /editor?id=12 로 들어오면 그 글을 열어 고칠 수 있습니다.
+        let originalPath = '';
+
+        const loadPost = async (id: string) => {
+          setStatus('불러오는 중…');
+          const response = await fetch(`/api/load-post?id=${encodeURIComponent(id)}`);
+          const data = await response.json();
+
+          if (!response.ok) return setStatus(data.error ?? '불러오지 못했습니다.', 'error');
+
+          titleInput.value = data.title ?? '';
+          bodyInput.value = data.body ?? '';
+          if (tagsInput) tagsInput.value = (data.tags ?? []).join(', ');
+          if (categoryInput) categoryInput.value = data.category ?? '';
+          if (dateInput) dateInput.value = data.date ?? '';
+          if (postIdInput) postIdInput.value = String(data.postId);
+
+          originalPath = data.path ?? '';
+
+          const label = document.getElementById('mode-label');
+          if (label) label.textContent = '수정 중';
+          const urlLabel = document.getElementById('post-url');
+          if (urlLabel) urlLabel.textContent = `/posts/${data.postId}/`;
+
+          // 고치는 중에는 새 글 임시 보관본을 덮어쓰지 않도록 비워둡니다.
+          try { localStorage.removeItem(STORAGE_KEY); } catch { /* 무시 */ }
+
+          render();
+          setStatus(`${data.postId}번 글을 불러왔습니다.`, 'ok');
+        };
+
+        const editingId = new URLSearchParams(location.search).get('id');
+        if (editingId) {
+          loadPost(editingId);
+        } else {
+          restoreLocal();
+          render();
+        }
       }
     </script>
   </body>
