@@ -113,10 +113,54 @@ spring:
 
 **굵게**, *기울임*, `인라인 코드`, [링크](https://docs.spring.io/) 모두 됩니다.
 
+## 카테고리
+
+**글이 놓인 폴더가 곧 카테고리입니다.** 별도 설정이 없습니다.
+
+```text
+src/content/posts/
+  backend/spring/2026-08-24-jpa-n-plus-one.md   →  백엔드 › Spring
+  algorithm/binary-search/2026-08-10-...md      →  알고리즘 › 이분 탐색
+```
+
+폴더 이름은 주소에 쓰이므로 **영문**으로 만들고, 화면에 한글로 보이게 하려면
+`src/config.ts` 의 `CATEGORY_LABELS` 에 한 줄 추가합니다.
+
+```ts title="src/config.ts"
+export const CATEGORY_LABELS = {
+  backend: '백엔드',
+  'backend/spring': 'Spring',
+};
+```
+
+카테고리를 바꾸고 싶으면 파일을 다른 폴더로 옮기기만 하면 됩니다.
+**주소는 파일 이름으로만 정해지므로 옮겨도 링크가 깨지지 않습니다.**
+
 ## 새 글 만들기
 
-파일을 직접 만들어도 되지만 명령어 하나로 프론트매터까지 채워 만들 수 있습니다.
+파일을 직접 만들어도 되지만 명령어 하나면 폴더와 프론트매터까지 갖춰집니다.
 
 ```bash
-npm run new "JPA N+1 문제 해결하기"
+npm run new "JPA N+1 문제 해결하기" --slug jpa-n-plus-one --in backend/spring
 ```
+
+| 옵션 | 뜻 |
+| --- | --- |
+| `--slug` | 파일 이름에 쓸 영문 이름. 제목이 한글이면 반드시 필요합니다 |
+| `--in` | 글을 넣을 카테고리 폴더. 없으면 새로 만듭니다 |
+
+`--slug` 를 강제하는 이유는 **한글 파일명이 주소에서 `%EA%B8%80...` 처럼 깨지기 때문**입니다.
+제목은 한글로 쓰되 파일 이름만 영문으로 두면 됩니다.
+
+## 발행하기
+
+만들어진 파일은 `draft: true` 라서 아직 사이트에 나오지 않습니다.
+개발 서버(`npm run dev`)에서는 보이니 미리 확인할 수 있습니다.
+
+다 쓰면 `draft: false` 로 바꾸고 커밋하면 끝입니다.
+
+```bash
+git add . && git commit -m "새 글" && git push
+```
+
+push하면 1~2분 안에 사이트에 반영됩니다.

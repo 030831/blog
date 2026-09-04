@@ -62,13 +62,14 @@ astro.config.ts        코드 블록(Shiki), 제목 앵커, 표 감싸기 설정
 시각이 아니라 날짜 단위로 비교합니다. 이 비교 로직을 단순화하지 말 것.
 
 **글 파일 이름은 영문 슬러그로.** 한글 파일명은 URL에서 퍼센트 인코딩되어 읽기 어려워집니다.
+`npm run new` 가 한글 제목일 때 `--slug` 를 요구하도록 막아둡니다.
 
 ## 자주 쓰는 명령
 
 ```bash
 npm run dev              # 개발 서버 (http://localhost:4321)
 npm run build            # 정적 빌드
-npm run new "글 제목"     # 프론트매터가 채워진 새 글 파일 생성
+npm run new "글 제목" --slug english-name --in backend/spring
 ```
 
 ## 확정된 디자인
