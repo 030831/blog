@@ -312,6 +312,12 @@ const today = (() => {
       .status { font-size: .8rem; color: var(--text-muted); }
       .status.error { color: #c0392b; }
       .status.ok { color: var(--accent); }
+      .status-link {
+        color: var(--accent);
+        font-weight: 700;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+      }
 
       .btn {
         padding: .5rem 1.1rem;
@@ -475,6 +481,40 @@ const today = (() => {
           status.className = `status ${kind}`;
         };
 
+        /** 저장 결과 뒤에 글로 가는 링크를 붙입니다. */
+        const setStatusWithLink = (message: string, url: string) => {
+          if (!status) return;
+          status.textContent = message + ' · ';
+          status.className = 'status ok';
+          const link = document.createElement('a');
+          link.href = url;
+          link.target = '_blank';
+          link.rel = 'noopener';
+          link.textContent = '글 보기 →';
+          link.className = 'status-link';
+          status.appendChild(link);
+        };
+
+        /**
+         * 개발 서버가 새 글 파일을 읽어들일 때까지 기다립니다.
+         *
+         * 파일을 쓴 직후에는 아직 그 주소의 페이지가 없어서, 바로 열면
+         * 오류 화면이 잠깐 떴다가 사라집니다. 준비될 때까지 확인한 뒤 엽니다.
+         */
+        const waitUntilReady = async (url: string, timeoutMs = 6000) => {
+          const until = Date.now() + timeoutMs;
+          while (Date.now() < until) {
+            try {
+              const response = await fetch(url, { cache: 'no-store' });
+              if (response.ok) return true;
+            } catch {
+              // 서버가 다시 뜨는 중이면 실패할 수 있습니다. 계속 시도합니다.
+            }
+            await new Promise((resolve) => setTimeout(resolve, 250));
+          }
+          return false;
+        };
+
         const save = async (draft: boolean, overwrite = false): Promise<void> => {
           const payload = {
             title: titleInput.value.trim(),
@@ -512,13 +552,17 @@ const today = (() => {
 
           if (!response.ok) return setStatus(result.error ?? '저장에 실패했습니다.', 'error');
 
-          setStatus(draft ? `임시저장됨 · ${result.path}` : `저장됨 · ${result.path}`, 'ok');
-
-          if (!draft) {
-            try { localStorage.removeItem(STORAGE_KEY); } catch { /* 무시 */ }
-            // 발행한 글을 바로 확인할 수 있게 새 탭으로 엽니다.
-            window.open(result.url, '_blank');
+          if (draft) {
+            return setStatus(`임시저장됨 · ${result.path}`, 'ok');
           }
+
+          try { localStorage.removeItem(STORAGE_KEY); } catch { /* 무시 */ }
+
+          setStatus('출간됨 · 페이지를 준비하는 중…', 'ok');
+          const ready = await waitUntilReady(result.url);
+          setStatusWithLink(ready ? '출간됨' : '출간됨 (페이지 반영이 늦어집니다)', result.url);
+
+          if (ready) window.open(result.url, '_blank');
         };
 
         $<HTMLButtonElement>('save-draft')?.addEventListener('click', () => save(true));
