@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "astro dev",
-    "write": "astro dev --open /editor",
+    "write": "astro dev --open",
     "build": "astro build",
     "preview": "astro preview",
     "new": "node scripts/new-post.mjs"

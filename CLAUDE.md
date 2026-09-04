@@ -150,7 +150,11 @@ Windows의 '애니메이션 효과'가 꺼져 있으면 이 설정이 켜집니�
 
 ## 글 편집기
 
-`npm run write` → http://localhost:4321/editor
+`npm run write` 로 개발 서버를 띄우면 헤더에 **글쓰기** 링크가 생깁니다.
+(주소로 직접 가려면 http://localhost:4321/editor)
+
+`astro dev --open /editor` 처럼 경로를 넘기면 Git Bash가 `/editor` 를 윈도우 경로로
+바꿔버려 오류가 납니다. 그래서 `--open` 만 쓰고 링크로 안내합니다.
 
 velog 같은 좌우 분할 편집기입니다. 왼쪽에 마크다운을 쓰면 오른쪽에 바로 그려지고,
 저장하면 `src/content/posts/` 아래에 `.md` 파일이 생깁니다.

@@ -57,6 +57,17 @@ const NAV = [
         </select>
       </form>
 
+      {import.meta.env.DEV && (
+        <a href="/editor" class="write-link" title="글쓰기 (개발 중에만 보입니다)">
+          <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+            <path d="M11.2 2.4a1.4 1.4 0 0 1 2 2L6 11.6l-2.7.7.7-2.7Z"
+                  fill="none" stroke="currentColor" stroke-width="1.4"
+                  stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          글쓰기
+        </a>
+      )}
+
       <ThemeToggle />
     </div>
   </div>
@@ -154,6 +165,26 @@ const NAV = [
   }
 
   .tools { display: flex; align-items: center; gap: .5rem; }
+
+  /* 개발 서버에서만 보이는 글쓰기 링크. 배포본에는 아예 렌더링되지 않습니다. */
+  .write-link {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .35rem .7rem;
+    border: 1px dashed var(--border-strong);
+    border-radius: 7px;
+    font-size: .8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+    transition: color .18s ease, border-color .18s ease, background .18s ease;
+  }
+  .write-link:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
 
   /* ── 검색 ── */
   .search {
