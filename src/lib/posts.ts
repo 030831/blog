@@ -85,3 +85,32 @@ export function readingTime(body: string): number {
   const chars = body.replace(/```[\s\S]*?```/g, '').length;
   return Math.max(1, Math.round(chars / 500));
 }
+
+/**
+ * 마크다운 본문에서 검색용 평문을 뽑습니다.
+ *
+ * 코드 블록은 통째로 버립니다. 코드까지 검색되면 `public`, `return` 같은
+ * 흔한 키워드에 대부분의 글이 걸려서 검색이 쓸모없어집니다.
+ */
+export function toPlainText(markdown: string): string {
+  return markdown
+    .replace(/```[\s\S]*?```/g, ' ')      // 코드 블록
+    .replace(/`[^`]*`/g, ' ')             // 인라인 코드
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ') // 이미지
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // 링크는 글자만 남김
+    .replace(/^#{1,6}\s+/gm, '')          // 제목 기호
+    .replace(/^>\s?/gm, '')               // 인용
+    .replace(/[*_~]/g, '')                // 강조 기호
+    .replace(/^\s*[-*+]\s+/gm, '')        // 목록 기호
+    .replace(/\|/g, ' ')                  // 표 구분자
+    .replace(/<[^>]+>/g, ' ')             // 인라인 HTML
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** 카드에 보일 발췌문. description이 있으면 그걸 쓰고, 없으면 본문 앞부분을 자릅니다. */
+export function excerptOf(post: Post, limit = 140): string {
+  if (post.data.description) return post.data.description;
+  const text = toPlainText(post.body ?? '');
+  return text.length > limit ? text.slice(0, limit).trimEnd() + '…' : text;
+}

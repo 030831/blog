@@ -1,6 +1,7 @@
 ---
 import SidebarLayout from '../../layouts/SidebarLayout.astro';
 import PostCard from '../../components/PostCard.astro';
+import SearchResults from '../../components/SearchResults.astro';
 import { getPublishedPosts } from '../../lib/posts';
 
 const posts = await getPublishedPosts();
@@ -13,8 +14,14 @@ const recent = posts.slice(0, 8);
     <p>왼쪽에서 주제를 고르면 그 아래 글이 모두 나옵니다.</p>
   </header>
 
-  <h2 class="section">최근 글</h2>
-  {recent.map((post) => <PostCard post={post} />)}
+  <SearchResults />
+
+  <div id="post-list">
+    <h2 class="section">최근 글</h2>
+    <div class="cards">
+      {recent.map((post) => <PostCard post={post} />)}
+    </div>
+  </div>
 </SidebarLayout>
 
 <style>
@@ -32,4 +39,5 @@ const recent = posts.slice(0, 8);
     text-transform: uppercase;
     color: var(--text-faint);
   }
+  .cards { display: grid; gap: 1.1rem; margin-top: 1.25rem; }
 </style>

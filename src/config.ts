@@ -26,11 +26,6 @@ export const SITE = {
    */
   skin: 'warm',
 
-  /**
-   * 오른쪽 아래에 디자인 전환 버튼을 띄웁니다.
-   * 마음에 드는 걸 고른 뒤 skin 값을 바꾸고 이 값을 false로 두세요.
-   */
-  showSkinSwitcher: true,
 } as const;
 
 /**

@@ -1,0 +1,298 @@
+---
+// 검색 결과가 표시되는 자리. 검색어가 없을 때는 숨어 있고,
+// 원래 글 목록(#post-list)이 그대로 보입니다.
+---
+
+<section class="results" id="search-results" hidden aria-live="polite">
+  <div class="summary">
+    <p class="count" id="search-count"></p>
+    <button type="button" class="reset" id="search-reset">검색 초기화</button>
+  </div>
+  <div class="items" id="search-items"></div>
+  <p class="empty" id="search-empty" hidden>
+    검색 결과가 없습니다. 다른 낱말이나 <strong>제목+내용</strong> 범위로 시도해 보세요.
+  </p>
+</section>
+
+<style>
+  .results { animation: fade-up .28s ease both; }
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  .summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding-bottom: .7rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border-strong);
+  }
+  .count { margin: 0; font-size: .85rem; color: var(--text-muted); }
+  .count strong { color: var(--text); }
+
+  .reset {
+    padding: .3rem .8rem;
+    font-family: var(--font-sans);
+    font-size: .78rem;
+    color: var(--text-muted);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: color .2s ease, border-color .2s ease, background .2s ease;
+  }
+  .reset:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+
+  .items { display: grid; gap: 1.1rem; }
+
+  .empty {
+    padding: 2.5rem 1rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: .92rem;
+    line-height: 1.7;
+  }
+  .empty strong { color: var(--text); }
+
+  /* 결과 카드는 스크립트가 만들어 넣습니다. 목록 카드와 같은 모양을 유지합니다. */
+  .items :global(.result) {
+    padding: 1.5rem 1.7rem 1.35rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    animation: fade-up .3s ease both;
+    transition: border-color .22s ease, box-shadow .22s ease, transform .22s ease;
+  }
+  .items :global(.result:hover) {
+    border-color: var(--border-strong);
+    box-shadow: 0 6px 22px color-mix(in srgb, var(--text) 8%, transparent);
+    transform: translateY(-3px);
+  }
+  .items :global(.result h3) {
+    margin: 0;
+    font-size: 1.16rem;
+    font-weight: 700;
+    line-height: 1.45;
+    letter-spacing: -0.022em;
+  }
+  .items :global(.result h3 a) { transition: color .2s ease; }
+  .items :global(.result:hover h3 a) { color: var(--accent); }
+  .items :global(.result .r-meta) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem .95rem;
+    margin-top: .6rem;
+    font-size: .78rem;
+    color: var(--text-faint);
+  }
+  .items :global(.result .r-excerpt) {
+    margin: .8rem 0 0;
+    font-size: .9rem;
+    line-height: 1.7;
+    color: var(--text-muted);
+  }
+  /* 검색어와 일치한 부분 */
+  .items :global(mark) {
+    background: color-mix(in srgb, var(--accent) 22%, transparent);
+    color: inherit;
+    border-radius: 2px;
+    padding: 0 .1em;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .results, .items :global(.result) { animation: none; }
+    .items :global(.result:hover) { transform: none; }
+  }
+</style>
+
+<script>
+  interface Entry {
+    title: string;
+    url: string;
+    date: string;
+    excerpt: string;
+    tags: string[];
+    category: string;
+    categoryLabel: string;
+    categoryName: string;
+    body: string;
+  }
+
+  type Scope = 'title' | 'all' | 'category';
+
+  const input = document.getElementById('search-input') as HTMLInputElement | null;
+  const scopeSelect = document.getElementById('search-scope') as HTMLSelectElement | null;
+  const clearButton = document.getElementById('search-clear') as HTMLButtonElement | null;
+  const form = document.getElementById('site-search') as HTMLFormElement | null;
+  const results = document.getElementById('search-results');
+  const itemsBox = document.getElementById('search-items');
+  const countBox = document.getElementById('search-count');
+  const emptyBox = document.getElementById('search-empty');
+  const resetButton = document.getElementById('search-reset');
+  const postList = document.getElementById('post-list');
+
+  // 검색 UI가 없는 페이지(글 상세 등)에서는 아무것도 하지 않습니다.
+  if (input && scopeSelect && results && itemsBox && countBox && emptyBox) {
+    let index: Entry[] | null = null;
+    let loading: Promise<Entry[]> | null = null;
+
+    /** 색인은 처음 검색할 때 한 번만 받아옵니다. */
+    const loadIndex = (): Promise<Entry[]> => {
+      if (index) return Promise.resolve(index);
+      loading ??= fetch('/search-index.json')
+        .then((r) => r.json())
+        .then((data: Entry[]) => {
+          index = data;
+          return data;
+        })
+        .catch(() => {
+          loading = null;
+          return [];
+        });
+      return loading;
+    };
+
+    const escapeHtml = (s: string) =>
+      s.replace(/[&<>"']/g, (c) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!,
+      );
+
+    const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    /** 검색어와 일치하는 부분을 <mark>로 감쌉니다. 입력값은 먼저 이스케이프합니다. */
+    const highlight = (text: string, query: string) => {
+      const safe = escapeHtml(text);
+      if (!query) return safe;
+      return safe.replace(new RegExp(escapeRegExp(escapeHtml(query)), 'gi'), (m) => `<mark>${m}</mark>`);
+    };
+
+    /**
+     * 검색어 주변 문장을 잘라냅니다.
+     * 본문 검색에서 맨 앞부분만 보여주면 왜 걸렸는지 알 수 없어서,
+     * 실제로 일치한 지점을 보여줍니다.
+     */
+    const snippet = (body: string, query: string, span = 90) => {
+      const at = body.toLowerCase().indexOf(query.toLowerCase());
+      if (at < 0) return body.slice(0, span * 2);
+      const start = Math.max(0, at - span);
+      const end = Math.min(body.length, at + query.length + span);
+      return (start > 0 ? '…' : '') + body.slice(start, end).trim() + (end < body.length ? '…' : '');
+    };
+
+    const matches = (entry: Entry, query: string, scope: Scope) => {
+      const q = query.toLowerCase();
+      if (scope === 'title') return entry.title.toLowerCase().includes(q);
+      if (scope === 'category')
+        return (
+          entry.categoryLabel.toLowerCase().includes(q) ||
+          entry.category.toLowerCase().includes(q) ||
+          entry.tags.some((t) => t.toLowerCase().includes(q))
+        );
+      return (
+        entry.title.toLowerCase().includes(q) ||
+        entry.body.toLowerCase().includes(q) ||
+        entry.excerpt.toLowerCase().includes(q)
+      );
+    };
+
+    const render = (list: Entry[], query: string, scope: Scope) => {
+      countBox.innerHTML = `<strong>${list.length}</strong>개의 글을 찾았습니다`;
+      emptyBox.hidden = list.length > 0;
+
+      itemsBox.innerHTML = list
+        .map((entry, i) => {
+          const text =
+            scope === 'all' && entry.body.toLowerCase().includes(query.toLowerCase())
+              ? snippet(entry.body, query)
+              : entry.excerpt;
+
+          return `
+            <article class="result" style="animation-delay:${Math.min(i * 40, 240)}ms">
+              <h3><a href="${entry.url}">${highlight(entry.title, query)}</a></h3>
+              <div class="r-meta">
+                <span>${entry.date}</span>
+                <span>${highlight(entry.categoryLabel, scope === 'category' ? query : '')}</span>
+              </div>
+              <p class="r-excerpt">${highlight(text, query)}</p>
+            </article>`;
+        })
+        .join('');
+    };
+
+    const showResults = (show: boolean) => {
+      results.hidden = !show;
+      if (postList) postList.hidden = show;
+      if (clearButton) clearButton.hidden = !input.value;
+    };
+
+    let timer: number | undefined;
+
+    const run = () => {
+      const query = input.value.trim();
+      const scope = scopeSelect.value as Scope;
+
+      if (!query) {
+        showResults(false);
+        return;
+      }
+
+      loadIndex().then((data) => {
+        // 입력이 바뀐 뒤 늦게 도착한 응답은 버립니다.
+        if (input.value.trim() !== query) return;
+        render(data.filter((e) => matches(e, query, scope)), query, scope);
+        showResults(true);
+      });
+    };
+
+    const schedule = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(run, 160);
+    };
+
+    // 다른 페이지에서 검색해 넘어온 경우 (/?q=...&scope=...) 바로 결과를 보여줍니다.
+    const params = new URLSearchParams(location.search);
+    const initialQuery = params.get('q');
+    if (initialQuery) {
+      input.value = initialQuery;
+      const initialScope = params.get('scope');
+      if (initialScope && ['title', 'all', 'category'].includes(initialScope)) {
+        scopeSelect.value = initialScope;
+      }
+      run();
+    }
+
+    input.addEventListener('input', schedule);
+    scopeSelect.addEventListener('change', run);
+    form?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      run();
+    });
+
+    const clear = () => {
+      input.value = '';
+      showResults(false);
+      input.focus();
+    };
+    clearButton?.addEventListener('click', clear);
+    resetButton?.addEventListener('click', clear);
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') clear();
+    });
+
+    // '/' 를 누르면 검색창으로 이동합니다.
+    document.addEventListener('keydown', (e) => {
+      const target = e.target as HTMLElement;
+      const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable;
+      if (e.key === '/' && !typing) {
+        e.preventDefault();
+        input.focus();
+      }
+    });
+  }
+</script>
