@@ -35,16 +35,18 @@
 
 ```
 src/
-  config.ts            사이트 전역 설정 — 제목, 주소, 메뉴, 카테고리 표시 이름, 스킨
+  config.ts            사이트 전역 설정 — 제목, 주소, 메뉴, 카테고리 표시 이름
   content/posts/       글. 폴더 구조가 곧 카테고리 트리
   content.config.ts    프론트매터 스키마 (오타는 빌드에서 잡힘)
   lib/posts.ts         글 목록, 슬러그, 카테고리 경로, 읽는 시간
   lib/categories.ts    카테고리 트리 생성, 브레드크럼
-  layouts/             BaseLayout(공통) / SidebarLayout(목록형) / DemoShell(시안 전용)
-  components/          Header, Footer, PostCard, CategoryTree, CategorySidebar 등
+  layouts/             BaseLayout(공통) / SidebarLayout(카테고리 사이드바용)
+  components/          SiteHeader(헤더+검색), PostCard, SearchResults,
+                       CategoryTree, Breadcrumb, Footer 등
   pages/               라우팅. 파일 = 주소
   styles/global.css    구조 + 본문 스타일
-  styles/skins.css     색·글꼴 팔레트 (warm / ink / terminal / nordic)
+  styles/skins.css     색 팔레트 (warm 한 벌. 라이트/다크)
+  pages/search-index.json.ts  검색용 색인 생성
 astro.config.ts        코드 블록(Shiki), 제목 앵커, 표 감싸기 설정
 ```
 
