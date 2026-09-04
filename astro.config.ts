@@ -55,6 +55,8 @@ function devEditor(): AstroIntegration {
         injectRoute({ pattern: '/editor', entrypoint: './src/dev/editor.astro' });
         injectRoute({ pattern: '/api/save-post', entrypoint: './src/dev/save-post.ts' });
         injectRoute({ pattern: '/api/load-post', entrypoint: './src/dev/load-post.ts' });
+        injectRoute({ pattern: '/api/manage', entrypoint: './src/dev/manage.ts' });
+        injectRoute({ pattern: '/categories/manage', entrypoint: './src/dev/categories.astro' });
       },
     },
   };

@@ -23,6 +23,7 @@ const items = nodes.flatMap(withDescendants);
       href={urlOfCategory(node.path)}
       class:list={['btn', { current: current === node.path }]}
       aria-current={current === node.path ? 'page' : undefined}
+      title={breadcrumbOf(node.path).map((step) => step.label).join(' › ')}
     >
       <span class="text">
         {/*
@@ -47,23 +48,28 @@ const items = nodes.flatMap(withDescendants);
    * 최상위를 왼쪽 열에 고정했더니 하위가 없는 카테고리에서 오른쪽이 비어
    * 표가 깨진 것처럼 보여서, 열을 없애고 흐르게 했습니다.
    */
+  /*
+   * 격자로 두어 줄 끝이 항상 맞습니다. 버튼 폭이 제각각이면 오른쪽이 남는데,
+   * 같은 폭의 칸에 채우면 그 여백이 사라집니다.
+   */
   .tree {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
     gap: .5rem;
   }
 
   .btn {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: .45rem;
-    padding: .5rem 1.15rem;
+    justify-content: space-between;
+    gap: .5rem;
+    min-width: 0;
+    padding: .5rem 1rem;
     background: var(--surface);
     border: 1px solid var(--border-strong);
     border-radius: 999px;
-    font-size: .925rem;
+    font-size: .85rem;
     color: var(--text);
-    white-space: nowrap;
     transition:
       color .18s ease,
       background .18s ease,
@@ -83,12 +89,21 @@ const items = nodes.flatMap(withDescendants);
     font-weight: 700;
   }
 
+  /* 칸보다 이름이 길면 잘라내고, 전체 이름은 title 속성으로 보여줍니다. */
+  .text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   /* 경로의 앞쪽은 흐리게 해서 마지막 이름이 먼저 읽히게 합니다. */
   .seg:not(:last-of-type) { color: var(--text-faint); }
   .sep { color: var(--text-faint); font-size: .82em; margin-inline: .1rem; }
 
   .n {
-    font-size: .75rem;
+    flex-shrink: 0;
+    font-size: .72rem;
     color: var(--text-faint);
     font-variant-numeric: tabular-nums;
   }

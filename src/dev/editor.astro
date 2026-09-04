@@ -133,6 +133,13 @@ const today = (() => {
 
           <div class="actions">
             <span id="status" class="status" role="status"></span>
+
+            <label class="auto-deploy" title="출간 후 git push 까지 자동으로 합니다">
+              <input type="checkbox" id="auto-deploy" />
+              자동 배포
+            </label>
+
+            <button type="button" id="delete-post" class="btn danger" hidden>삭제</button>
             <button type="button" id="save-draft" class="btn ghost">임시저장</button>
             <button type="button" id="publish" class="btn primary">출간하기</button>
           </div>
@@ -333,6 +340,20 @@ const today = (() => {
       .btn.ghost { background: none; color: var(--text-muted); border-color: var(--border-strong); }
       .btn.ghost:hover { color: var(--text); border-color: var(--text-muted); }
       .btn.primary { background: var(--accent); color: #fff; }
+      .btn.danger { background: none; color: #c0392b; border-color: #e3b5ae; }
+      .btn.danger:hover { background: #fdecea; border-color: #c0392b; }
+      .btn.danger[hidden] { display: none; }
+
+      .auto-deploy {
+        display: flex;
+        align-items: center;
+        gap: .3rem;
+        font-size: .8rem;
+        color: var(--text-muted);
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      .auto-deploy input { accent-color: var(--accent); cursor: pointer; }
       .btn.primary:hover { filter: brightness(1.08); }
       .btn:disabled { opacity: .5; cursor: default; }
 
@@ -557,6 +578,7 @@ const today = (() => {
           // 파일 위치가 바뀌었을 수 있으므로 다음 저장을 위해 갱신합니다.
           if (result.path) originalPath = result.path;
 
+          // 임시저장은 배포하지 않습니다. draft 글은 어차피 사이트에 나가지 않습니다.
           if (draft) {
             return setStatus(`임시저장됨 · ${result.path}`, 'ok');
           }
@@ -568,6 +590,10 @@ const today = (() => {
           setStatusWithLink(ready ? '출간됨' : '출간됨 (페이지 반영이 늦어집니다)', result.url);
 
           if (ready) window.open(result.url, '_blank');
+
+          if (autoDeploy?.checked) {
+            await deploy(`${editingId ? '글 수정' : '새 글'}: ${payload.title}`);
+          }
         };
 
         $<HTMLButtonElement>('save-draft')?.addEventListener('click', () => save(true));
@@ -595,6 +621,7 @@ const today = (() => {
 
           const label = document.getElementById('mode-label');
           if (label) label.textContent = '수정 중';
+          if (deleteButton) deleteButton.hidden = false;
           const urlLabel = document.getElementById('post-url');
           if (urlLabel) urlLabel.textContent = `/posts/${data.postId}/`;
 
@@ -604,6 +631,49 @@ const today = (() => {
           render();
           setStatus(`${data.postId}번 글을 불러왔습니다.`, 'ok');
         };
+
+        // ── 배포 (git add / commit / push) ──
+        const autoDeploy = $<HTMLInputElement>('auto-deploy');
+
+        try {
+          if (autoDeploy) autoDeploy.checked = localStorage.getItem('auto-deploy') === 'on';
+        } catch { /* 무시 */ }
+
+        autoDeploy?.addEventListener('change', () => {
+          try { localStorage.setItem('auto-deploy', autoDeploy.checked ? 'on' : 'off'); } catch { /* 무시 */ }
+        });
+
+        const manage = async (body: Record<string, unknown>) => {
+          const response = await fetch('/api/manage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+          return { ok: response.ok, data: await response.json() };
+        };
+
+        const deploy = async (message: string) => {
+          setStatus('배포 중… (git push)');
+          const { ok, data } = await manage({ action: 'deploy', message });
+          if (!ok) return setStatus(`배포 실패 · ${data.error}`, 'error');
+          setStatus(data.skipped ? '올릴 변경사항이 없습니다.' : '배포 완료 · 1~2분 뒤 반영됩니다', 'ok');
+        };
+
+        // ── 글 삭제 ──
+        const deleteButton = $<HTMLButtonElement>('delete-post');
+
+        deleteButton?.addEventListener('click', async () => {
+          const id = Number(postIdInput?.value ?? 0);
+          if (!confirm(`${id}번 글을 삭제할까요? 파일이 지워지며 되돌릴 수 없습니다.`)) return;
+
+          setStatus('삭제 중…');
+          const { ok, data } = await manage({ action: 'delete-post', postId: id });
+          if (!ok) return setStatus(data.error ?? '삭제하지 못했습니다.', 'error');
+
+          setStatus(`삭제됨 · ${data.path}`, 'ok');
+          if (autoDeploy?.checked) await deploy(`글 삭제 (${id}번)`);
+          setTimeout(() => { location.href = '/editor'; }, 1200);
+        });
 
         const editingId = new URLSearchParams(location.search).get('id');
         if (editingId) {

@@ -11,7 +11,12 @@ const total = tree.reduce((sum, node) => sum + node.totalCount, 0);
   <div class="wrap">
     <header class="page-head">
       <span class="page-title-wrap"><h1 class="page-title">카테고리</h1></span>
-      <p>{tree.length}개 주제 · 글 {total}개</p>
+      <p>
+        {tree.length}개 주제 · 글 {total}개
+        {import.meta.env.DEV && (
+          <a href="/categories/manage" class="manage-link">카테고리 관리</a>
+        )}
+      </p>
     </header>
 
     {tree.length === 0 ? (
@@ -31,5 +36,18 @@ const total = tree.reduce((sum, node) => sum + node.totalCount, 0);
   .page-head p { margin: .9rem 0 0; color: var(--text-muted); font-size: .9rem; }
 
   .empty { margin: 0; color: var(--text-muted); padding-block: 1.5rem; text-align: center; }
+
+  /* 개발 서버에서만 보입니다. */
+  .manage-link {
+    margin-left: .6rem;
+    padding: .1rem .55rem;
+    border: 1px dashed var(--border-strong);
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: color .18s ease, border-color .18s ease, background .18s ease;
+  }
+  .manage-link:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
 
 </style>
