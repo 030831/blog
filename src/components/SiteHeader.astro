@@ -1,276 +1,220 @@
 ---
 import { SITE } from '../config';
-import { getCategoryTree, urlOfCategory } from '../lib/categories';
 import ThemeToggle from './ThemeToggle.astro';
 
-const tree = await getCategoryTree();
 const path = Astro.url.pathname;
-const isActive = (href: string) => path === href || path.startsWith(href + '/');
+const isActive = (href: string) =>
+  href === '/' ? path === '/' : path === href || path.startsWith(href + '/');
 
 const NAV = [
-  {
-    href: '/',
-    label: '홈',
-    icon: 'M2.5 7.6 8 2.8l5.5 4.8v5.6a1 1 0 0 1-1 1H9.7v-3.6H6.3v3.6H3.5a1 1 0 0 1-1-1Z',
-  },
-  {
-    href: '/categories',
-    label: '카테고리',
-    icon: 'M2.2 4.4a1.3 1.3 0 0 1 1.3-1.3h2.4l1.4 1.7h5.2a1.3 1.3 0 0 1 1.3 1.3v6a1.3 1.3 0 0 1-1.3 1.3H3.5a1.3 1.3 0 0 1-1.3-1.3Z',
-  },
+  { href: '/', label: '홈' },
+  { href: '/posts', label: '글' },
+  { href: '/categories', label: '카테고리' },
 ];
 ---
 
 <header class="site-header">
-  <div class="top">
-    <a href="/" class="brand">
-      <span class="brand-text">{SITE.title}</span>
+  <!-- 머리말: 이름과 한 줄 소개만. 다른 요소를 섞지 않습니다. -->
+  <div class="masthead">
+    <a href="/" class="brand" aria-label={`${SITE.title} 홈`}>
+      <span class="brand-mark">{SITE.title}</span>
     </a>
-    <div class="theme-slot"><ThemeToggle /></div>
+    <p class="tagline">{SITE.tagline}</p>
   </div>
 
-  <nav class="icon-nav" aria-label="주요 메뉴">
-    {NAV.map((item) => (
-      <a href={item.href} class:list={['icon-link', { on: isActive(item.href) }]}>
-        <svg viewBox="0 0 16 16" width="17" height="17" aria-hidden="true">
-          <path d={item.icon} fill="none" stroke="currentColor" stroke-width="1.4"
-                stroke-linecap="round" stroke-linejoin="round" />
+  <!-- 도구 막대: 이동은 왼쪽, 검색은 오른쪽. 얇은 선으로만 구분합니다. -->
+  <div class="bar">
+    <nav class="nav" aria-label="주요 메뉴">
+      {NAV.map((item) => (
+        <a href={item.href} class:list={['nav-link', { on: isActive(item.href) }]}>
+          {item.label}
+        </a>
+      ))}
+    </nav>
+
+    <div class="tools">
+      <form class="search" role="search" id="site-search" autocomplete="off">
+        <label class="sr-only" for="search-input">검색어</label>
+        <svg class="search-icon" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">
+          <circle cx="7.2" cy="7.2" r="4.4" fill="none" stroke="currentColor" stroke-width="1.5" />
+          <path d="m10.6 10.6 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
         </svg>
-        <span>{item.label}</span>
-      </a>
-    ))}
-  </nav>
 
-  <!-- 검색 바. 스크립트는 SearchPanel 쪽에서 붙입니다. -->
-  <form class="search" role="search" id="site-search" autocomplete="off">
-    <label class="sr-only" for="search-input">검색어</label>
-    <svg class="search-icon" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-      <circle cx="7.2" cy="7.2" r="4.4" fill="none" stroke="currentColor" stroke-width="1.5" />
-      <path d="m10.6 10.6 3 3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-    </svg>
+        <input id="search-input" type="search" placeholder="검색" aria-describedby="search-hint" />
 
-    <input
-      id="search-input"
-      type="search"
-      placeholder="검색어를 입력하세요"
-      aria-describedby="search-hint"
-    />
+        <button type="button" class="clear" id="search-clear" hidden aria-label="검색어 지우기">
+          <svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+            <path d="m4.5 4.5 7 7m0-7-7 7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" />
+          </svg>
+        </button>
 
-    <button type="button" class="clear" id="search-clear" hidden aria-label="검색어 지우기">
-      <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
-        <path d="m4.5 4.5 7 7m0-7-7 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-      </svg>
-    </button>
+        <label class="sr-only" for="search-scope">검색 범위</label>
+        <select id="search-scope" class="scope">
+          <option value="title">제목</option>
+          <option value="all">제목+내용</option>
+          <option value="category">카테고리</option>
+        </select>
+      </form>
 
-    <label class="sr-only" for="search-scope">검색 범위</label>
-    <select id="search-scope" class="scope">
-      <option value="title">제목</option>
-      <option value="all">제목+내용</option>
-      <option value="category">카테고리</option>
-    </select>
-  </form>
+      <ThemeToggle />
+    </div>
+  </div>
   <p id="search-hint" class="sr-only">입력하면 결과가 바로 아래에 표시됩니다.</p>
-
-  <nav class="cats" aria-label="카테고리 바로가기">
-    <a href="/posts" class:list={['chip', { on: isActive('/posts') }]}>전체</a>
-    {tree.map((root) => (
-      <a
-        href={urlOfCategory(root.path)}
-        class:list={['chip', { on: isActive(urlOfCategory(root.path).replace(/\/$/, '')) }]}
-      >
-        {root.label}
-        <span class="n">{root.totalCount}</span>
-      </a>
-    ))}
-  </nav>
 </header>
 
 <style>
   .site-header {
-    display: grid;
-    justify-items: center;
-    gap: 1.15rem;
-    padding: 2.75rem 1.5rem 1.75rem;
+    max-width: 46rem;
+    margin-inline: auto;
+    padding-inline: 1.5rem;
+  }
+
+  /* ── 머리말 ── */
+  .masthead {
+    text-align: center;
+    padding-block: 3rem 2.25rem;
+  }
+
+  .brand { display: inline-block; }
+  .brand-mark {
+    display: inline-block;
+    padding: .5rem 1.05rem;
+    background: var(--text);
+    color: var(--bg);
+    border-radius: 5px;
+    /* 숫자로 된 이름이라 자간을 살짝 벌려야 한 덩어리로 읽힙니다. */
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    transition: opacity .2s ease;
+  }
+  .brand:hover .brand-mark { opacity: .82; }
+
+  .tagline {
+    margin: 1.05rem auto 0;
+    max-width: 26rem;
+    font-size: .85rem;
+    line-height: 1.65;
+    color: var(--text-muted);
+  }
+
+  /* ── 도구 막대 ── */
+  .bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.25rem;
+    height: 3.25rem;
+    border-top: 1px solid var(--border);
     border-bottom: 1px solid var(--border);
   }
 
-  /* ── 이름 박스 ── */
-  .top {
+  .nav { display: flex; align-items: center; gap: .25rem; }
+  .nav-link {
     position: relative;
-    width: 100%;
-    max-width: 44rem;
-    display: flex;
-    justify-content: center;
-  }
-  .brand {
-    display: inline-block;
-    padding: .62rem 1.6rem;
-    background: var(--text);
-    color: var(--bg);
-    border-radius: var(--radius-sm);
-    font-size: 1.25rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    transition: transform .22s cubic-bezier(.34, 1.35, .64, 1), box-shadow .22s ease;
-  }
-  .brand:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px color-mix(in srgb, var(--text) 25%, transparent);
-  }
-  .brand-text { display: inline-block; }
-
-  .theme-slot { position: absolute; right: 0; top: 50%; transform: translateY(-50%); }
-
-  /* ── 아이콘 내비 ── */
-  .icon-nav { display: flex; flex-wrap: wrap; justify-content: center; gap: .3rem; }
-  .icon-link {
-    position: relative;
-    display: grid;
-    justify-items: center;
-    gap: .22rem;
-    padding: .45rem .75rem;
-    border-radius: var(--radius-sm);
-    font-size: .74rem;
+    padding: .4rem .6rem;
+    font-size: .875rem;
     color: var(--text-muted);
-    transition: color .2s ease, background .2s ease;
+    transition: color .18s ease;
   }
-  .icon-link svg { transition: transform .25s cubic-bezier(.34, 1.4, .64, 1); }
-  .icon-link:hover { color: var(--text); background: var(--bg-subtle); }
-  .icon-link:hover svg { transform: translateY(-2px); }
-  .icon-link.on { color: var(--accent); }
+  .nav-link:hover { color: var(--text); }
+  .nav-link.on { color: var(--text); font-weight: 600; }
 
-  /* 활성 항목 아래 밑줄이 가운데에서 펼쳐집니다. */
-  .icon-link::after {
+  /* 현재 위치는 밑줄로만 표시합니다. 색을 더 쓰면 시선이 분산됩니다. */
+  .nav-link.on::after {
     content: '';
     position: absolute;
-    left: 50%;
-    bottom: .18rem;
+    left: .6rem;
+    right: .6rem;
+    bottom: -.15rem;
     height: 2px;
-    width: 1.1rem;
-    border-radius: 2px;
     background: var(--accent);
-    transform: translateX(-50%) scaleX(0);
-    transition: transform .26s cubic-bezier(.34, 1.4, .64, 1);
   }
-  .icon-link.on::after { transform: translateX(-50%) scaleX(1); }
 
-  /* ── 검색 바 ── */
+  .tools { display: flex; align-items: center; gap: .5rem; }
+
+  /* ── 검색 ── */
   .search {
-    position: relative;
     display: flex;
     align-items: center;
-    gap: .5rem;
-    width: 100%;
-    max-width: 34rem;
-    padding: 0 .5rem 0 .85rem;
-    background: var(--surface);
-    border: 1px solid var(--border-strong);
-    border-radius: 999px;
-    transition: border-color .22s ease, box-shadow .22s ease;
+    gap: .45rem;
+    width: clamp(11rem, 26vw, 17rem);
+    padding: .34rem .6rem;
+    background: var(--bg-subtle);
+    border: 1px solid transparent;
+    border-radius: 7px;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
   }
   .search:focus-within {
+    background: var(--surface);
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
   }
-  .search-icon { flex-shrink: 0; color: var(--text-faint); transition: color .2s ease; }
+  .search-icon { flex-shrink: 0; color: var(--text-faint); transition: color .18s ease; }
   .search:focus-within .search-icon { color: var(--accent); }
 
   .search input {
     flex: 1;
     min-width: 0;
-    padding: .68rem 0;
+    padding: .12rem 0;
     border: 0;
     background: none;
     font-family: var(--font-sans);
-    font-size: .92rem;
+    font-size: .85rem;
     color: var(--text);
   }
   .search input:focus { outline: none; }
   .search input::placeholder { color: var(--text-faint); }
-  /* 브라우저 기본 검색 지우기 버튼은 숨기고 직접 만든 버튼을 씁니다. */
   .search input::-webkit-search-cancel-button { display: none; }
 
   .clear {
     flex-shrink: 0;
     display: grid;
     place-items: center;
-    width: 1.35rem;
-    height: 1.35rem;
+    width: 1.1rem;
+    height: 1.1rem;
     padding: 0;
     border: 0;
     border-radius: 50%;
-    background: var(--bg-subtle);
+    background: var(--border);
     color: var(--text-muted);
     cursor: pointer;
-    transition: background .18s ease, color .18s ease, transform .18s ease;
+    transition: background .18s ease, color .18s ease;
   }
-  .clear:hover { background: var(--accent); color: #fff; transform: rotate(90deg); }
-  /* display를 지정했으므로 hidden 속성이 먹도록 명시해 줍니다. */
+  .clear:hover { background: var(--accent); color: #fff; }
   .clear[hidden] { display: none; }
 
   .scope {
     flex-shrink: 0;
-    padding: .35rem 1.5rem .35rem .7rem;
+    padding: .1rem 1rem .1rem .3rem;
     border: 0;
-    border-radius: 999px;
     background: transparent;
     font-family: var(--font-sans);
-    font-size: .8rem;
+    font-size: .78rem;
     color: var(--text-muted);
     cursor: pointer;
     appearance: none;
     background-image:
       linear-gradient(45deg, transparent 50%, currentColor 50%),
       linear-gradient(135deg, currentColor 50%, transparent 50%);
-    background-position: right .78rem center, right .55rem center;
+    background-position: right .42rem center, right .22rem center;
     background-size: 4px 4px, 4px 4px;
     background-repeat: no-repeat;
   }
-  .scope:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  .scope:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
 
-  /* ── 카테고리 칩 ── */
-  .cats { display: flex; flex-wrap: wrap; justify-content: center; gap: .45rem; }
-  .chip {
-    display: inline-flex;
-    align-items: center;
-    gap: .4rem;
-    padding: .34rem .85rem;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    font-size: .82rem;
-    color: var(--text-muted);
-    transition:
-      color .2s ease,
-      border-color .2s ease,
-      background .2s ease,
-      transform .2s ease;
-  }
-  .chip:hover {
-    color: var(--accent);
-    border-color: var(--accent);
-    background: var(--accent-soft);
-    transform: translateY(-1px);
-  }
-  .chip.on {
-    color: var(--bg);
-    background: var(--text);
-    border-color: var(--text);
-  }
-  .chip .n { font-size: .7rem; opacity: .65; font-variant-numeric: tabular-nums; }
-
-  @media (prefers-reduced-motion: reduce) {
-    .brand:hover, .chip:hover, .icon-link:hover svg { transform: none; }
-    .clear:hover { transform: none; }
-    .icon-link::after { transform: translateX(-50%) scaleX(1); opacity: 0; transition: opacity .2s ease; }
-    .icon-link.on::after { opacity: 1; }
-  }
-
-  @media (max-width: 34rem) {
-    .site-header { padding-top: 1.75rem; gap: 1rem; }
-    .theme-slot { position: static; transform: none; }
-    .top { justify-content: space-between; align-items: center; }
-    .brand { font-size: 1.1rem; padding: .5rem 1.1rem; }
-    .icon-link span { font-size: .7rem; }
+  @media (max-width: 40rem) {
+    .masthead { padding-block: 2.25rem 1.75rem; }
+    .bar {
+      height: auto;
+      flex-direction: column;
+      align-items: stretch;
+      gap: .6rem;
+      padding-block: .7rem;
+    }
+    .nav { justify-content: center; }
+    .nav-link.on::after { bottom: .1rem; }
+    .search { width: auto; flex: 1; }
   }
 </style>
 
