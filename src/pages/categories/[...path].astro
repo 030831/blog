@@ -1,9 +1,9 @@
 ---
-import SidebarLayout from '../../layouts/SidebarLayout.astro';
-import PostCard from '../../components/PostCard.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
+import PostRow from '../../components/PostRow.astro';
 import SearchResults from '../../components/SearchResults.astro';
-import { getCategoryTree, flattenTree, getPostsInCategory, labelOf } from '../../lib/categories';
+import { getCategoryTree, flattenTree, getPostsInCategory, labelOf, urlOfCategory } from '../../lib/categories';
 
 export async function getStaticPaths() {
   const tree = await getCategoryTree();
@@ -21,38 +21,88 @@ const { node, posts } = Astro.props;
 const parentPath = node.path.split('/').slice(0, -1).join('/');
 ---
 
-<SidebarLayout
+<BaseLayout
   title={labelOf(node.path)}
   description={`${labelOf(node.path)} 카테고리의 글 ${posts.length}개`}
-  current={node.path}
 >
-  <header class="page-head">
-    <Breadcrumb path={parentPath} />
-    <h1>{node.label}</h1>
-    <p>
-      {posts.length}개의 글
-      {node.children.length > 0 && <span class="sub-note">· 하위 카테고리 포함</span>}
-    </p>
-  </header>
+  <div class="wrap">
+    <header class="page-head">
+      <Breadcrumb path={parentPath} />
+      <h1>{node.label}</h1>
+      <p class="count">
+        {posts.length}개의 글
+        {node.children.length > 0 && <span class="note">· 하위 카테고리 포함</span>}
+      </p>
 
-  <SearchResults />
+      {node.children.length > 0 && (
+        <nav class="subs" aria-label="하위 카테고리">
+          {node.children.map((child) => (
+            <a href={urlOfCategory(child.path)}>
+              {child.label}
+              <span class="n">{child.totalCount}</span>
+            </a>
+          ))}
+        </nav>
+      )}
+    </header>
 
-  <div id="post-list">
-    {posts.length === 0 ? (
-      <p class="empty">아직 이 카테고리에 글이 없습니다.</p>
-    ) : (
-      <div class="cards">
-        {posts.map((post) => <PostCard post={post} />)}
-      </div>
-    )}
+    <SearchResults />
+
+    <div id="post-list">
+      {posts.length === 0 ? (
+        <p class="empty">아직 이 카테고리에 글이 없습니다.</p>
+      ) : (
+        <ul class="rows">
+          {posts.map((post) => <PostRow post={post} />)}
+        </ul>
+      )}
+    </div>
   </div>
-</SidebarLayout>
+</BaseLayout>
 
 <style>
-  .page-head { padding-bottom: .5rem; }
-  .page-head h1 { margin: .5rem 0 0; font-size: 1.875rem; font-weight: 800; letter-spacing: -0.03em; }
-  .page-head p { margin: .5rem 0 0; color: var(--text-muted); font-size: .9375rem; }
-  .sub-note { color: var(--text-faint); }
-  .empty { color: var(--text-muted); padding-block: 2rem; }
-  .cards { display: grid; gap: 1.1rem; }
+  .wrap { max-width: 46rem; padding-block: 2.75rem 1rem; }
+
+  .page-head { margin-bottom: 1.75rem; }
+  .page-head h1 {
+    margin: .55rem 0 0;
+    font-size: 1.9rem;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+  .count { margin: .5rem 0 0; color: var(--text-muted); font-size: .9rem; }
+  .note { color: var(--text-faint); }
+
+  .subs { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: 1.1rem; }
+  .subs a {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .32rem .8rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: .82rem;
+    color: var(--text-muted);
+    transition: color .2s ease, border-color .2s ease, background .2s ease, transform .2s ease;
+  }
+  .subs a:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    transform: translateY(-1px);
+  }
+  .subs .n { font-size: .7rem; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+
+  .rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--border-strong);
+  }
+
+  .empty { color: var(--text-muted); padding-block: 3rem; text-align: center; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .subs a:hover { transform: none; }
+  }
 </style>

@@ -92,6 +92,6 @@ const recent = posts.slice(0, SITE.postsPerPage);
 
   @media (prefers-reduced-motion: reduce) {
     .cards > :global(*) { animation: none; }
-    .more-all, .more-all svg { transition: none; }
+    .more-all:hover svg { transform: none; }
   }
 </style>

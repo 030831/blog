@@ -154,9 +154,12 @@ const href = urlOf(post);
   .more:hover svg { transform: translateX(3px); }
   .more:active { transform: translateY(1px); }
 
+  /* 움직임만 끄고 색·그림자 전환은 그대로 둡니다. */
   @media (prefers-reduced-motion: reduce) {
-    .card, .card::before, .title a, .more, .more svg { transition: none; }
     .card:hover { transform: none; }
+    .card::before { transform: scaleY(1); opacity: 0; transition: opacity .2s ease; }
+    .card:hover::before { opacity: 1; }
+    .more:hover svg { transform: none; }
   }
 
   @media (max-width: 34rem) {

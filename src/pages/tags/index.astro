@@ -50,4 +50,8 @@ const tags = await getTagCounts();
   }
   .tag-list a:hover { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
   .count { font-size: .8125rem; color: var(--text-faint); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tag-list a:hover { transform: none; }
+  }
 </style>

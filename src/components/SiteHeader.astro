@@ -270,8 +270,10 @@ const NAV = [
   .chip .n { font-size: .7rem; opacity: .65; font-variant-numeric: tabular-nums; }
 
   @media (prefers-reduced-motion: reduce) {
-    .brand, .icon-link svg, .icon-link::after, .chip, .clear, .search { transition: none; }
     .brand:hover, .chip:hover, .icon-link:hover svg { transform: none; }
+    .clear:hover { transform: none; }
+    .icon-link::after { transform: translateX(-50%) scaleX(1); opacity: 0; transition: opacity .2s ease; }
+    .icon-link.on::after { opacity: 1; }
   }
 
   @media (max-width: 34rem) {

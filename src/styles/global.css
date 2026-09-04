@@ -35,9 +35,24 @@ html {
   scroll-behavior: smooth;
   scroll-padding-top: 5rem;
 }
+/*
+ * 움직임을 줄여달라는 설정(Windows의 '애니메이션 효과' 끄기 등)을 존중합니다.
+ *
+ * 다만 모든 전환을 없애지는 않습니다. 어지럼증을 유발하는 것은 '움직임'이지
+ * 색이 서서히 바뀌는 것이 아니기 때문입니다. 그래서 위치 이동(transform)과
+ * 등장 애니메이션만 끄고, 색·그림자·투명도 전환은 그대로 둡니다.
+ * 각 컴포넌트에서는 hover 시의 transform 값을 none으로 되돌려 줍니다.
+ */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-property:
+      color, background-color, background-size, border-color,
+      box-shadow, opacity, fill, stroke, text-decoration-color !important;
+  }
 }
 
 body {
