@@ -6,7 +6,7 @@ import { SITE } from '../../config';
 import { getPublishedPosts, paginate } from '../../lib/posts';
 
 export async function getStaticPaths() {
-  const pages = paginate(await getPublishedPosts(), SITE.postsPerPage);
+  const pages = paginate(await getPublishedPosts(), SITE.homePostsPerPage);
   // 1쪽은 / 가 담당하므로 2쪽부터 만듭니다.
   return pages.slice(1).map((posts, i) => ({
     params: { page: String(i + 2) },
@@ -17,7 +17,7 @@ export async function getStaticPaths() {
 const { posts, current, total } = Astro.props;
 ---
 
-<BaseLayout title={`${SITE.title} — ${current}쪽`}>
+<BaseLayout title={`${current}쪽`}>
   <div class="wrap">
     <PostFeed posts={posts} current={current} total={total} />
   </div>

@@ -14,6 +14,9 @@ export const SITE = {
     { label: 'GitHub', href: 'https://github.com/030831' },
     { label: 'RSS', href: '/rss.xml' },
   ],
+  /** 홈에서 한 쪽에 보여줄 글 수 (카드라 자리를 많이 차지해 적게 잡습니다) */
+  homePostsPerPage: 5,
+  /** 글 목록(/posts)에서 한 쪽에 보여줄 글 수 (제목+날짜 행이라 더 담을 수 있습니다) */
   postsPerPage: 10,
 
   /**

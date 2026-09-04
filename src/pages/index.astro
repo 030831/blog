@@ -4,7 +4,7 @@ import PostFeed from '../components/PostFeed.astro';
 import { SITE } from '../config';
 import { getPublishedPosts, paginate } from '../lib/posts';
 
-const pages = paginate(await getPublishedPosts(), SITE.postsPerPage);
+const pages = paginate(await getPublishedPosts(), SITE.homePostsPerPage);
 ---
 
 <BaseLayout title={SITE.title}>
