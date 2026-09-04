@@ -70,7 +70,7 @@ const rows = nodes.map((root) => ({ root, descendants: descendantsOf(root) }));
   .tree {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
-    gap: .5rem .6rem;
+    gap: .55rem .7rem;
     align-items: start;
   }
   .row { display: contents; }
@@ -78,11 +78,12 @@ const rows = nodes.map((root) => ({ root, descendants: descendantsOf(root) }));
   .btn {
     display: inline-flex;
     align-items: center;
-    gap: .4rem;
-    padding: .34rem .8rem;
-    border: 1px solid transparent;
-    border-radius: 7px;
-    font-size: .875rem;
+    gap: .45rem;
+    /* 카드와 같은 표면색을 씁니다. 라이트에서는 흰색, 다크에서는 카드와 같은 톤이라
+       어느 쪽에서도 버튼이 배경에서 뜨지 않습니다. */
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
     white-space: nowrap;
     transition:
       color .18s ease,
@@ -91,32 +92,37 @@ const rows = nodes.map((root) => ({ root, descendants: descendantsOf(root) }));
       box-shadow .18s ease;
   }
 
-  /* ── 최상위: 채운 버튼 ── */
+  /* ── 최상위: 크고 굵게, 테두리도 진하게 ── */
   .root {
-    background: var(--text);
-    border-color: var(--text);
-    color: var(--bg);
-    font-weight: 600;
+    padding: .55rem 1.25rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    border-color: var(--border-strong);
   }
   .root:hover {
-    background: var(--accent);
+    color: var(--accent);
     border-color: var(--accent);
-    color: #fff;
-    box-shadow: 0 3px 12px color-mix(in srgb, var(--accent) 30%, transparent);
+    background: var(--accent-soft);
+    box-shadow: 0 3px 12px color-mix(in srgb, var(--accent) 18%, transparent);
   }
-  .root .n { opacity: .55; }
-  .root.current { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .root.current {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
 
-  /* ── 하위: 테두리 버튼 ── */
+  /* ── 하위: 한 단계 작게 ── */
   .children {
     display: flex;
     flex-wrap: wrap;
-    gap: .35rem;
-    min-height: 1.9rem;
+    gap: .4rem;
+    min-height: 2.5rem;
     align-items: center;
   }
   .child {
-    border-color: var(--border-strong);
+    padding: .42rem 1rem;
+    font-size: .9rem;
     color: var(--text-muted);
   }
   .child:hover {
@@ -136,7 +142,7 @@ const rows = nodes.map((root) => ({ root, descendants: descendantsOf(root) }));
   .sep { color: var(--text-faint); font-size: .8em; margin-inline: .05rem; }
 
   .n {
-    font-size: .7rem;
+    font-size: .75rem;
     color: var(--text-faint);
     font-variant-numeric: tabular-nums;
   }

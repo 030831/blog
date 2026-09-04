@@ -114,3 +114,13 @@ export function excerptOf(post: Post, limit = 140): string {
   const text = toPlainText(post.body ?? '');
   return text.length > limit ? text.slice(0, limit).trimEnd() + '…' : text;
 }
+
+/** 목록을 쪽 단위로 자릅니다. 결과는 1쪽부터 순서대로 담깁니다. */
+export function paginate<T>(items: T[], perPage: number): T[][] {
+  if (items.length === 0) return [[]];
+  const pages: T[][] = [];
+  for (let i = 0; i < items.length; i += perPage) {
+    pages.push(items.slice(i, i + perPage));
+  }
+  return pages;
+}

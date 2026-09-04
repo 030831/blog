@@ -1,56 +1,19 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
-import PostRow from '../../components/PostRow.astro';
-import SearchResults from '../../components/SearchResults.astro';
-import { getPublishedPosts } from '../../lib/posts';
+import PostArchive from '../../components/PostArchive.astro';
+import { SITE } from '../../config';
+import { getPublishedPosts, paginate } from '../../lib/posts';
 
 const posts = await getPublishedPosts();
-
-// 연도별로 묶어서 보여줍니다. 글이 쌓일수록 이 화면이 아카이브 역할을 합니다.
-const byYear = new Map<number, typeof posts>();
-for (const post of posts) {
-  const year = post.data.date.getFullYear();
-  if (!byYear.has(year)) byYear.set(year, []);
-  byYear.get(year)!.push(post);
-}
-const years = [...byYear.keys()].sort((a, b) => b - a);
+const pages = paginate(posts, SITE.postsPerPage);
 ---
 
 <BaseLayout title="글" description="전체 글 목록">
   <div class="wrap">
-    <p class="count">{posts.length}개의 글</p>
-
-    <SearchResults />
-
-    <div id="post-list">
-      {years.map((year) => (
-        <section class="year-group">
-          <h2 class="year">{year}</h2>
-          <ul class="rows">
-            {byYear.get(year)!.map((post) => <PostRow post={post} />)}
-          </ul>
-        </section>
-      ))}
-    </div>
+    <PostArchive posts={pages[0]} totalPosts={posts.length} current={1} total={pages.length} />
   </div>
 </BaseLayout>
 
 <style>
   .wrap { max-width: 46rem; padding-block: 2.75rem 1rem; }
-
-  .count { margin: 0 0 1.75rem; color: var(--text-muted); font-size: .9rem; }
-
-  .year-group + .year-group { margin-top: 2.75rem; }
-  .year {
-    margin: 0 0 .35rem;
-    padding-bottom: .55rem;
-    border-bottom: 1px solid var(--border-strong);
-    font-size: .8rem;
-    font-weight: 700;
-    letter-spacing: .08em;
-    color: var(--text-faint);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .rows { list-style: none; margin: 0; padding: 0; }
 </style>

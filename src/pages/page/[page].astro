@@ -1,0 +1,28 @@
+---
+// 홈의 2쪽부터. 1쪽은 / 입니다.
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import PostFeed from '../../components/PostFeed.astro';
+import { SITE } from '../../config';
+import { getPublishedPosts, paginate } from '../../lib/posts';
+
+export async function getStaticPaths() {
+  const pages = paginate(await getPublishedPosts(), SITE.postsPerPage);
+  // 1쪽은 / 가 담당하므로 2쪽부터 만듭니다.
+  return pages.slice(1).map((posts, i) => ({
+    params: { page: String(i + 2) },
+    props: { posts, current: i + 2, total: pages.length },
+  }));
+}
+
+const { posts, current, total } = Astro.props;
+---
+
+<BaseLayout title={`${SITE.title} — ${current}쪽`}>
+  <div class="wrap">
+    <PostFeed posts={posts} current={current} total={total} />
+  </div>
+</BaseLayout>
+
+<style>
+  .wrap { max-width: 46rem; padding-block: 2.25rem 1rem; }
+</style>

@@ -1,0 +1,65 @@
+---
+// 글 목록(/posts)의 본문. 연도별로 묶은 행 + 검색 결과 자리 + 쪽 이동.
+import PostRow from './PostRow.astro';
+import SearchResults from './SearchResults.astro';
+import Pagination from './Pagination.astro';
+import type { Post } from '../lib/posts';
+
+interface Props {
+  /** 이번 쪽에 보여줄 글 */
+  posts: Post[];
+  /** 전체 글 수 (쪽과 무관하게 총계를 보여주기 위함) */
+  totalPosts: number;
+  current: number;
+  total: number;
+}
+const { posts, totalPosts, current, total } = Astro.props;
+
+// 이번 쪽에 담긴 글만 연도별로 묶습니다.
+const byYear = new Map<number, Post[]>();
+for (const post of posts) {
+  const year = post.data.date.getFullYear();
+  if (!byYear.has(year)) byYear.set(year, []);
+  byYear.get(year)!.push(post);
+}
+const years = [...byYear.keys()].sort((a, b) => b - a);
+---
+
+<p class="count">
+  {totalPosts}개의 글
+  {total > 1 && <span class="page-of">· {current} / {total} 쪽</span>}
+</p>
+
+<SearchResults />
+
+<div id="post-list">
+  {years.map((year) => (
+    <section class="year-group">
+      <h2 class="year">{year}</h2>
+      <ul class="rows">
+        {byYear.get(year)!.map((post) => <PostRow post={post} />)}
+      </ul>
+    </section>
+  ))}
+
+  <Pagination current={current} total={total} base="/posts/" />
+</div>
+
+<style>
+  .count { margin: 0 0 1.75rem; color: var(--text-muted); font-size: .9rem; }
+  .page-of { color: var(--text-faint); }
+
+  .year-group + .year-group { margin-top: 2.75rem; }
+  .year {
+    margin: 0 0 .35rem;
+    padding-bottom: .55rem;
+    border-bottom: 1px solid var(--border-strong);
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rows { list-style: none; margin: 0; padding: 0; }
+</style>

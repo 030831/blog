@@ -1,0 +1,174 @@
+---
+interface Props {
+  current: number;
+  total: number;
+  /**
+   * 목록의 기준 주소. 반드시 슬래시로 끝나야 합니다.
+   * 1쪽은 base 그대로, 2쪽부터는 `${base}page/2/` 가 됩니다.
+   * 예) '/' → '/', '/page/2/'   |   '/posts/' → '/posts/', '/posts/page/2/'
+   */
+  base: string;
+}
+
+const { current, total, base } = Astro.props;
+
+const hrefFor = (page: number) => (page === 1 ? base : `${base}page/${page}/`);
+
+/**
+ * 보여줄 쪽 번호를 고릅니다.
+ * 처음과 끝, 그리고 현재 쪽 주변만 남기고 나머지는 '…' 로 접습니다.
+ * 쪽이 수십 개가 되어도 버튼 줄이 한 줄을 넘지 않습니다.
+ */
+function pageItems(current: number, total: number): (number | '…')[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+  const pages = new Set<number>([1, total, current]);
+  if (current - 1 > 1) pages.add(current - 1);
+  if (current + 1 < total) pages.add(current + 1);
+  // 현재가 양 끝에 붙어 있으면 반대쪽을 한 칸 더 보여줘 버튼 수를 일정하게 유지합니다.
+  if (current <= 3) pages.add(2).add(3).add(4);
+  if (current >= total - 2) pages.add(total - 1).add(total - 2).add(total - 3);
+
+  const sorted = [...pages].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b);
+
+  const items: (number | '…')[] = [];
+  let previous = 0;
+  for (const page of sorted) {
+    if (previous && page - previous > 1) items.push('…');
+    items.push(page);
+    previous = page;
+  }
+  return items;
+}
+
+const items = pageItems(current, total);
+const hasPrev = current > 1;
+const hasNext = current < total;
+---
+
+{total > 1 && (
+  <nav class="pagination" aria-label="쪽 이동">
+    {hasPrev ? (
+      <a href={hrefFor(current - 1)} class="step" rel="prev" aria-label="이전 쪽">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor"
+                stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </a>
+    ) : (
+      <span class="step disabled" aria-hidden="true">
+        <svg viewBox="0 0 16 16" width="14" height="14">
+          <path d="M10 3.5 5.5 8l4.5 4.5" fill="none" stroke="currentColor"
+                stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </span>
+    )}
+
+    <ul class="pages">
+      {items.map((item) =>
+        item === '…' ? (
+          <li class="gap" aria-hidden="true">…</li>
+        ) : (
+          <li>
+            <a
+              href={hrefFor(item)}
+              class:list={['page', { on: item === current }]}
+              aria-label={`${item}쪽`}
+              aria-current={item === current ? 'page' : undefined}
+            >
+              {item}
+            </a>
+          </li>
+        ),
+      )}
+    </ul>
+
+    {hasNext ? (
+      <a href={hrefFor(current + 1)} class="step" rel="next" aria-label="다음 쪽">
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+          <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor"
+                stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </a>
+    ) : (
+      <span class="step disabled" aria-hidden="true">
+        <svg viewBox="0 0 16 16" width="14" height="14">
+          <path d="M6 3.5 10.5 8 6 12.5" fill="none" stroke="currentColor"
+                stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </span>
+    )}
+  </nav>
+)}
+
+<style>
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    margin-top: 2.75rem;
+    padding-top: 1.75rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .pages {
+    display: flex;
+    align-items: center;
+    gap: .2rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .page,
+  .step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    height: 2.25rem;
+    padding-inline: .5rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    font-size: .875rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    transition: color .18s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease;
+  }
+
+  .page:hover,
+  .step:not(.disabled):hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  .page.on {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    font-weight: 700;
+  }
+
+  /* 갈 곳이 없는 화살표는 남겨두되 눌리지 않게 합니다.
+     사라지면 버튼 줄이 좌우로 흔들립니다. */
+  .step.disabled {
+    color: var(--text-faint);
+    opacity: .45;
+    cursor: default;
+  }
+
+  .gap {
+    padding-inline: .3rem;
+    color: var(--text-faint);
+    font-size: .875rem;
+    user-select: none;
+  }
+
+  @media (max-width: 30rem) {
+    .page, .step { min-width: 2rem; height: 2rem; font-size: .82rem; }
+    .pagination { gap: .25rem; }
+  }
+</style>

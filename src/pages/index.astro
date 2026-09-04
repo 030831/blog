@@ -1,97 +1,18 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import PostCard from '../components/PostCard.astro';
-import SearchResults from '../components/SearchResults.astro';
+import PostFeed from '../components/PostFeed.astro';
 import { SITE } from '../config';
-import { getPublishedPosts } from '../lib/posts';
+import { getPublishedPosts, paginate } from '../lib/posts';
 
-const posts = await getPublishedPosts();
-const recent = posts.slice(0, SITE.postsPerPage);
+const pages = paginate(await getPublishedPosts(), SITE.postsPerPage);
 ---
 
 <BaseLayout title={SITE.title}>
   <div class="wrap">
-    <SearchResults />
-
-    <div id="post-list">
-      {recent.length === 0 ? (
-        <p class="empty">
-          아직 글이 없습니다. <code>src/content/posts/</code> 에 마크다운 파일을 추가해 보세요.
-        </p>
-      ) : (
-        <div class="cards">
-          {recent.map((post) => <PostCard post={post} />)}
-        </div>
-      )}
-
-      {posts.length > recent.length && (
-        <div class="more-wrap">
-          <a href="/posts" class="more-all">
-            글 전체 보기
-            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-              <path d="M3 8h9M8.4 4.2 12.2 8l-3.8 3.8" fill="none" stroke="currentColor"
-                    stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-          </a>
-        </div>
-      )}
-    </div>
+    <PostFeed posts={pages[0]} current={1} total={pages.length} />
   </div>
 </BaseLayout>
 
 <style>
   .wrap { max-width: 46rem; padding-block: 2.25rem 1rem; }
-
-  .cards { display: grid; gap: .9rem; }
-
-  /* 카드가 순서대로 살짝 떠오르며 나타납니다. */
-  .cards > :global(*) { animation: card-in .4s ease both; }
-  .cards > :global(*:nth-child(1)) { animation-delay: .02s; }
-  .cards > :global(*:nth-child(2)) { animation-delay: .07s; }
-  .cards > :global(*:nth-child(3)) { animation-delay: .12s; }
-  .cards > :global(*:nth-child(4)) { animation-delay: .17s; }
-  .cards > :global(*:nth-child(5)) { animation-delay: .22s; }
-  .cards > :global(*:nth-child(n+6)) { animation-delay: .26s; }
-
-  @keyframes card-in {
-    from { opacity: 0; transform: translateY(10px); }
-    to   { opacity: 1; transform: none; }
-  }
-
-  .empty { color: var(--text-muted); padding-block: 3rem; text-align: center; }
-  .empty code {
-    font-family: var(--font-mono);
-    font-size: .875em;
-    background: var(--bg-subtle);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: .12em .38em;
-  }
-
-  .more-wrap { display: flex; justify-content: center; margin-top: 2.25rem; }
-  .more-all {
-    display: inline-flex;
-    align-items: center;
-    gap: .45rem;
-    padding: .6rem 1.35rem;
-    font-size: .88rem;
-    font-weight: 600;
-    color: var(--text);
-    border: 1px solid var(--border-strong);
-    border-radius: 999px;
-    transition: background .22s ease, color .22s ease, border-color .22s ease, box-shadow .22s ease;
-  }
-  .more-all svg { transition: transform .25s cubic-bezier(.34, 1.3, .64, 1); }
-  .more-all:hover {
-    color: #fff;
-    background: var(--accent);
-    border-color: var(--accent);
-    box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 30%, transparent);
-  }
-  .more-all:hover svg { transform: translateX(3px); }
-
-  @media (prefers-reduced-motion: reduce) {
-    .cards > :global(*) { animation: none; }
-    .more-all:hover svg { transform: none; }
-  }
 </style>

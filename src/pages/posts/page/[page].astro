@@ -1,0 +1,28 @@
+---
+// 글 목록의 2쪽부터. 1쪽은 /posts 입니다.
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import PostArchive from '../../../components/PostArchive.astro';
+import { SITE } from '../../../config';
+import { getPublishedPosts, paginate } from '../../../lib/posts';
+
+export async function getStaticPaths() {
+  const all = await getPublishedPosts();
+  const pages = paginate(all, SITE.postsPerPage);
+  return pages.slice(1).map((posts, i) => ({
+    params: { page: String(i + 2) },
+    props: { posts, totalPosts: all.length, current: i + 2, total: pages.length },
+  }));
+}
+
+const { posts, totalPosts, current, total } = Astro.props;
+---
+
+<BaseLayout title={`글 — ${current}쪽`} description="전체 글 목록">
+  <div class="wrap">
+    <PostArchive posts={posts} totalPosts={totalPosts} current={current} total={total} />
+  </div>
+</BaseLayout>
+
+<style>
+  .wrap { max-width: 46rem; padding-block: 2.75rem 1rem; }
+</style>
