@@ -40,4 +40,5 @@ export const CATEGORY_LABELS: Record<string, string> = {
   algorithm: '알고리즘',
   'algorithm/binary-search': '이분 탐색',
   blog: '블로그',
+  sample: '샘플',
 };
