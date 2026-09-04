@@ -1,0 +1,544 @@
+---
+/**
+ * 글 편집기. `npm run dev` 로 띄운 개발 서버에서만 동작합니다.
+ *
+ * 왼쪽에 마크다운을 쓰면 오른쪽에 바로 그려지고, 저장하면
+ * src/content/posts/ 아래에 .md 파일이 만들어집니다.
+ * 배포된 사이트에는 파일을 쓸 서버가 없으므로 여기서는 열리지 않습니다.
+ */
+import { readdirSync, statSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { CATEGORY_LABELS } from '../config';
+import '../styles/global.css';
+
+const isDev = import.meta.env.DEV;
+
+/** 이미 있는 카테고리 폴더를 모읍니다. */
+function categoryFolders(dir: string, prefix = ''): string[] {
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir).flatMap((name) => {
+    const full = join(dir, name);
+    if (!statSync(full).isDirectory()) return [];
+    const path = prefix ? `${prefix}/${name}` : name;
+    return [path, ...categoryFolders(full, path)];
+  });
+}
+
+const categories = isDev
+  ? categoryFolders(join(process.cwd(), 'src', 'content', 'posts')).sort()
+  : [];
+
+const today = (() => {
+  const now = new Date();
+  return [
+    now.getFullYear(),
+    String(now.getMonth() + 1).padStart(2, '0'),
+    String(now.getDate()).padStart(2, '0'),
+  ].join('-');
+})();
+---
+
+<!doctype html>
+<html lang="ko" data-skin="warm" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>글쓰기 — 030831</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+
+  <body class="editor-body">
+    {!isDev ? (
+      <div class="blocked">
+        <h1>편집기는 개발 서버에서만 열립니다</h1>
+        <p>
+          이 블로그는 서버 없이 돌아가는 정적 사이트라, 배포된 주소에는 글을 저장할 곳이 없습니다.
+          내 컴퓨터에서 <code>npm run dev</code> 로 띄운 뒤
+          <code>http://localhost:4321/editor</code> 로 들어오세요.
+        </p>
+        <a href="/">홈으로</a>
+      </div>
+    ) : (
+      <div class="shell">
+        <!-- ── 왼쪽: 입력 ── -->
+        <section class="pane write">
+          <input
+            id="title"
+            class="title-input"
+            type="text"
+            placeholder="제목을 입력하세요"
+            autocomplete="off"
+          />
+          <div class="rule"></div>
+
+          <input
+            id="tags"
+            class="tag-input"
+            type="text"
+            placeholder="태그를 입력하세요 (쉼표로 구분)"
+            autocomplete="off"
+          />
+
+          <div class="toolbar" role="toolbar" aria-label="서식">
+            <button type="button" data-cmd="h1" title="제목 1">H<sub>1</sub></button>
+            <button type="button" data-cmd="h2" title="제목 2">H<sub>2</sub></button>
+            <button type="button" data-cmd="h3" title="제목 3">H<sub>3</sub></button>
+            <button type="button" data-cmd="h4" title="제목 4">H<sub>4</sub></button>
+            <span class="divider"></span>
+            <button type="button" data-cmd="bold" title="굵게"><b>B</b></button>
+            <button type="button" data-cmd="italic" title="기울임"><i>I</i></button>
+            <button type="button" data-cmd="strike" title="취소선"><s>S</s></button>
+            <span class="divider"></span>
+            <button type="button" data-cmd="quote" title="인용">&rdquo;</button>
+            <button type="button" data-cmd="link" title="링크">🔗</button>
+            <button type="button" data-cmd="image" title="이미지">🖼</button>
+            <button type="button" data-cmd="code" title="코드 블록">&lt;/&gt;</button>
+          </div>
+
+          <textarea
+            id="body"
+            class="body-input"
+            placeholder="당신의 이야기를 적어보세요..."
+            spellcheck="false"></textarea>
+        </section>
+
+        <!-- ── 오른쪽: 미리보기 ── -->
+        <section class="pane preview">
+          <h1 id="preview-title" class="preview-title"></h1>
+          <div id="preview" class="prose"></div>
+        </section>
+
+        <!-- ── 아래: 설정과 저장 ── -->
+        <footer class="bar">
+          <a href="/" class="exit">← 나가기</a>
+
+          <div class="meta">
+            <label>
+              <span>카테고리</span>
+              <input
+                id="category"
+                list="category-list"
+                type="text"
+                placeholder="backend/spring"
+                autocomplete="off"
+              />
+              <datalist id="category-list">
+                {categories.map((path) => (
+                  <option value={path}>{CATEGORY_LABELS[path] ?? path}</option>
+                ))}
+              </datalist>
+            </label>
+
+            <label>
+              <span>주소</span>
+              <input id="slug" type="text" placeholder="my-post" autocomplete="off" />
+            </label>
+
+            <label>
+              <span>날짜</span>
+              <input id="date" type="date" value={today} />
+            </label>
+          </div>
+
+          <div class="actions">
+            <span id="status" class="status" role="status"></span>
+            <button type="button" id="save-draft" class="btn ghost">임시저장</button>
+            <button type="button" id="publish" class="btn primary">출간하기</button>
+          </div>
+        </footer>
+      </div>
+    )}
+
+    <style is:global>
+      .editor-body { height: 100vh; overflow: hidden; }
+
+      .blocked {
+        max-width: 34rem;
+        margin: 6rem auto;
+        padding: 0 1.5rem;
+        text-align: center;
+      }
+      .blocked h1 { font-size: 1.4rem; letter-spacing: -0.02em; }
+      .blocked p { color: var(--text-muted); line-height: 1.8; }
+      .blocked code {
+        font-family: var(--font-mono);
+        font-size: .875em;
+        background: var(--bg-subtle);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: .12em .38em;
+      }
+      .blocked a { color: var(--accent); font-weight: 600; }
+
+      .shell {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: minmax(0, 1fr) auto;
+        height: 100vh;
+      }
+
+      .pane { overflow-y: auto; padding: 2.5rem 2.75rem; }
+      .write { display: flex; flex-direction: column; background: var(--bg); }
+      .preview {
+        background: var(--bg-subtle);
+        border-left: 1px solid var(--border);
+      }
+
+      /* ── 입력 ── */
+      .title-input,
+      .tag-input,
+      .body-input {
+        width: 100%;
+        border: 0;
+        background: none;
+        font-family: var(--font-sans);
+        color: var(--text);
+      }
+      .title-input:focus,
+      .tag-input:focus,
+      .body-input:focus { outline: none; }
+
+      .title-input {
+        font-size: 2.2rem;
+        font-weight: 800;
+        letter-spacing: -0.035em;
+        line-height: 1.3;
+      }
+      .title-input::placeholder { color: var(--text-faint); }
+
+      .rule {
+        width: 4rem;
+        height: 5px;
+        margin: 1.25rem 0;
+        border-radius: 5px;
+        background: var(--text);
+      }
+
+      .tag-input { font-size: 1rem; margin-bottom: 1.25rem; }
+      .tag-input::placeholder { color: var(--text-faint); }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: .15rem;
+        padding-bottom: .9rem;
+        margin-bottom: 1.1rem;
+        border-bottom: 1px solid var(--border);
+        flex-wrap: wrap;
+      }
+      .toolbar button {
+        min-width: 2.1rem;
+        height: 2.1rem;
+        padding: 0 .4rem;
+        border: 0;
+        border-radius: 6px;
+        background: none;
+        color: var(--text-muted);
+        font-family: var(--font-sans);
+        font-size: .95rem;
+        cursor: pointer;
+        transition: color .15s ease, background .15s ease;
+      }
+      .toolbar button:hover { color: var(--text); background: var(--bg-subtle); }
+      .toolbar .divider {
+        width: 1px;
+        height: 1.1rem;
+        margin-inline: .45rem;
+        background: var(--border);
+      }
+
+      .body-input {
+        flex: 1;
+        min-height: 20rem;
+        resize: none;
+        font-family: var(--font-mono);
+        font-size: .95rem;
+        line-height: 1.85;
+      }
+      .body-input::placeholder { color: var(--text-faint); font-family: var(--font-sans); }
+
+      /* ── 미리보기 ── */
+      .preview-title {
+        margin: 0 0 1.5rem;
+        font-size: 2.2rem;
+        font-weight: 800;
+        letter-spacing: -0.035em;
+        line-height: 1.3;
+        color: var(--text);
+        min-height: 1.2em;
+      }
+      .preview .prose { font-size: 1rem; }
+
+      /* ── 아래 막대 ── */
+      .bar {
+        grid-column: 1 / -1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+        padding: .85rem 1.5rem;
+        background: var(--surface);
+        border-top: 1px solid var(--border);
+      }
+      .exit {
+        font-size: .9rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        transition: color .15s ease;
+      }
+      .exit:hover { color: var(--accent); }
+
+      .meta { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+      .meta label { display: flex; align-items: center; gap: .45rem; font-size: .8rem; }
+      .meta span { color: var(--text-faint); white-space: nowrap; }
+      .meta input {
+        width: 9.5rem;
+        padding: .32rem .6rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--bg);
+        font-family: var(--font-sans);
+        font-size: .82rem;
+        color: var(--text);
+      }
+      .meta input:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+      }
+
+      .actions { display: flex; align-items: center; gap: .6rem; }
+      .status { font-size: .8rem; color: var(--text-muted); }
+      .status.error { color: #c0392b; }
+      .status.ok { color: var(--accent); }
+
+      .btn {
+        padding: .5rem 1.1rem;
+        border-radius: 7px;
+        border: 1px solid transparent;
+        font-family: var(--font-sans);
+        font-size: .875rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background .18s ease, color .18s ease, border-color .18s ease;
+      }
+      .btn.ghost { background: none; color: var(--text-muted); border-color: var(--border-strong); }
+      .btn.ghost:hover { color: var(--text); border-color: var(--text-muted); }
+      .btn.primary { background: var(--accent); color: #fff; }
+      .btn.primary:hover { filter: brightness(1.08); }
+      .btn:disabled { opacity: .5; cursor: default; }
+
+      @media (max-width: 60rem) {
+        .shell { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+        .preview { display: none; }
+        .bar { flex-wrap: wrap; }
+      }
+    </style>
+
+    <script>
+      import { marked } from 'marked';
+
+      const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T | null;
+
+      const titleInput = $<HTMLInputElement>('title');
+      const tagsInput = $<HTMLInputElement>('tags');
+      const bodyInput = $<HTMLTextAreaElement>('body');
+      const categoryInput = $<HTMLInputElement>('category');
+      const slugInput = $<HTMLInputElement>('slug');
+      const dateInput = $<HTMLInputElement>('date');
+      const preview = $('preview');
+      const previewTitle = $('preview-title');
+      const status = $('status');
+
+      // 편집기가 없는 화면(배포본)에서는 아무것도 하지 않습니다.
+      if (titleInput && bodyInput && preview && previewTitle) {
+        const STORAGE_KEY = 'editor-draft';
+
+        marked.setOptions({ breaks: true, gfm: true });
+
+        // ── 미리보기 ──
+        const render = () => {
+          previewTitle.textContent = titleInput.value || '제목을 입력하세요';
+          previewTitle.style.color = titleInput.value ? '' : 'var(--text-faint)';
+          preview.innerHTML = marked.parse(bodyInput.value) as string;
+        };
+
+        // ── 제목에서 주소 자동 생성 ──
+        // 한글은 주소에서 깨지므로 영문/숫자만 남깁니다. 비면 직접 적어야 합니다.
+        const autoSlug = (text: string) =>
+          text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+        let slugTouched = false;
+        slugInput?.addEventListener('input', () => { slugTouched = true; });
+
+        titleInput.addEventListener('input', () => {
+          if (slugInput && !slugTouched) slugInput.value = autoSlug(titleInput.value);
+          render();
+          saveLocal();
+        });
+
+        // ── 자동 임시 보관 ──
+        // 서버에 저장하기 전이라도 새로고침으로 글이 날아가지 않게 합니다.
+        const saveLocal = () => {
+          try {
+            localStorage.setItem(
+              STORAGE_KEY,
+              JSON.stringify({
+                title: titleInput.value,
+                tags: tagsInput?.value ?? '',
+                body: bodyInput.value,
+                category: categoryInput?.value ?? '',
+                slug: slugInput?.value ?? '',
+                date: dateInput?.value ?? '',
+              }),
+            );
+          } catch {
+            // 저장이 막힌 환경에서는 넘어갑니다.
+          }
+        };
+
+        const restoreLocal = () => {
+          try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (!saved) return;
+            const data = JSON.parse(saved);
+            titleInput.value = data.title ?? '';
+            bodyInput.value = data.body ?? '';
+            if (tagsInput) tagsInput.value = data.tags ?? '';
+            if (categoryInput) categoryInput.value = data.category ?? '';
+            if (slugInput && data.slug) { slugInput.value = data.slug; slugTouched = true; }
+            if (dateInput && data.date) dateInput.value = data.date;
+          } catch {
+            // 깨진 값이면 무시합니다.
+          }
+        };
+
+        for (const el of [bodyInput, tagsInput, categoryInput, dateInput]) {
+          el?.addEventListener('input', () => { render(); saveLocal(); });
+        }
+
+        // ── 서식 버튼 ──
+        /** 선택한 글자를 앞뒤로 감쌉니다. 선택이 없으면 커서를 가운데 둡니다. */
+        const wrap = (before: string, after = before, placeholder = '') => {
+          const start = bodyInput.selectionStart;
+          const end = bodyInput.selectionEnd;
+          const selected = bodyInput.value.slice(start, end) || placeholder;
+          const text = before + selected + after;
+
+          bodyInput.setRangeText(text, start, end, 'end');
+          if (!bodyInput.value.slice(start, end)) {
+            const caret = start + before.length;
+            bodyInput.setSelectionRange(caret, caret + selected.length);
+          }
+          bodyInput.focus();
+          render();
+          saveLocal();
+        };
+
+        /** 커서가 있는 줄 맨 앞에 기호를 붙입니다. 이미 있으면 뗍니다. */
+        const prefixLine = (mark: string) => {
+          const value = bodyInput.value;
+          const start = bodyInput.selectionStart;
+          const lineStart = value.lastIndexOf('\n', start - 1) + 1;
+          const lineEnd = value.indexOf('\n', start);
+          const line = value.slice(lineStart, lineEnd === -1 ? value.length : lineEnd);
+
+          const stripped = line.replace(/^(#{1,6}\s|>\s)/, '');
+          const next = stripped.startsWith(mark) ? stripped : mark + stripped;
+
+          bodyInput.setRangeText(next, lineStart, lineStart + line.length, 'end');
+          bodyInput.focus();
+          render();
+          saveLocal();
+        };
+
+        const commands: Record<string, () => void> = {
+          h1: () => prefixLine('# '),
+          h2: () => prefixLine('## '),
+          h3: () => prefixLine('### '),
+          h4: () => prefixLine('#### '),
+          bold: () => wrap('**', '**', '굵게'),
+          italic: () => wrap('*', '*', '기울임'),
+          strike: () => wrap('~~', '~~', '취소선'),
+          quote: () => prefixLine('> '),
+          link: () => wrap('[', '](https://)', '링크 글자'),
+          image: () => wrap('![', '](이미지 주소)', '설명'),
+          code: () => wrap('```java title="파일명.java"\n', '\n```', '코드'),
+        };
+
+        for (const button of document.querySelectorAll<HTMLButtonElement>('.toolbar button')) {
+          button.addEventListener('click', () => commands[button.dataset.cmd!]?.());
+        }
+
+        // 탭으로 들여쓰기 (기본 동작인 포커스 이동을 막습니다)
+        bodyInput.addEventListener('keydown', (e) => {
+          if (e.key !== 'Tab') return;
+          e.preventDefault();
+          bodyInput.setRangeText('  ', bodyInput.selectionStart, bodyInput.selectionEnd, 'end');
+          render();
+        });
+
+        // ── 저장 ──
+        const setStatus = (message: string, kind: '' | 'ok' | 'error' = '') => {
+          if (!status) return;
+          status.textContent = message;
+          status.className = `status ${kind}`;
+        };
+
+        const save = async (draft: boolean, overwrite = false): Promise<void> => {
+          const payload = {
+            title: titleInput.value.trim(),
+            slug: (slugInput?.value ?? '').trim(),
+            category: (categoryInput?.value ?? '').trim(),
+            date: dateInput?.value ?? '',
+            description: '',
+            tags: (tagsInput?.value ?? '')
+              .split(',')
+              .map((t) => t.trim())
+              .filter(Boolean),
+            body: bodyInput.value,
+            draft,
+            overwrite,
+          };
+
+          if (!payload.title) return setStatus('제목을 입력하세요.', 'error');
+          if (!payload.slug) {
+            return setStatus('주소 이름을 영문으로 적어주세요.', 'error');
+          }
+
+          setStatus('저장 중…');
+
+          const response = await fetch('/api/save-post', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const result = await response.json();
+
+          if (response.status === 409 && result.exists) {
+            if (confirm('같은 이름의 글이 이미 있습니다. 덮어쓸까요?')) {
+              return save(draft, true);
+            }
+            return setStatus('저장하지 않았습니다.');
+          }
+
+          if (!response.ok) return setStatus(result.error ?? '저장에 실패했습니다.', 'error');
+
+          setStatus(draft ? `임시저장됨 · ${result.path}` : `저장됨 · ${result.path}`, 'ok');
+
+          if (!draft) {
+            try { localStorage.removeItem(STORAGE_KEY); } catch { /* 무시 */ }
+            // 발행한 글을 바로 확인할 수 있게 새 탭으로 엽니다.
+            window.open(result.url, '_blank');
+          }
+        };
+
+        $<HTMLButtonElement>('save-draft')?.addEventListener('click', () => save(true));
+        $<HTMLButtonElement>('publish')?.addEventListener('click', () => save(false));
+
+        restoreLocal();
+        render();
+      }
+    </script>
+  </body>
+</html>

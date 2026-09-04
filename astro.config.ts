@@ -1,4 +1,5 @@
 import { defineConfig } from 'astro/config';
+import type { AstroIntegration } from 'astro';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
@@ -39,9 +40,28 @@ function rehypeWrapTables() {
   };
 }
 
+/**
+ * 글 편집기를 개발 서버에서만 붙입니다.
+ *
+ * 편집기는 파일을 디스크에 쓰기 때문에 서버가 필요한데, 배포본은 정적 파일뿐이라
+ * 애초에 빌드에 넣지 않습니다. src/pages 밖에 두고 여기서 주입하는 이유입니다.
+ */
+function devEditor(): AstroIntegration {
+  return {
+    name: 'dev-editor',
+    hooks: {
+      'astro:config:setup': ({ command, injectRoute }) => {
+        if (command !== 'dev') return;
+        injectRoute({ pattern: '/editor', entrypoint: './src/dev/editor.astro' });
+        injectRoute({ pattern: '/api/save-post', entrypoint: './src/dev/save-post.ts' });
+      },
+    },
+  };
+}
+
 export default defineConfig({
   site: SITE.url,
-  integrations: [mdx(), sitemap()],
+  integrations: [mdx(), sitemap(), devEditor()],
   markdown: {
     shikiConfig: {
       // 라이트/다크 두 벌을 동시에 구워둡니다. 테마 전환 시 CSS 변수로 갈아끼웁니다.

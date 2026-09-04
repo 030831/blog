@@ -69,6 +69,7 @@ astro.config.ts        코드 블록(Shiki), 제목 앵커, 표 감싸기 설정
 ```bash
 npm run dev              # 개발 서버 (http://localhost:4321)
 npm run build            # 정적 빌드
+npm run write            # 편집기를 열고 브라우저에서 글쓰기 (권장)
 npm run new "글 제목" --slug english-name --in backend/spring
 ```
 
@@ -146,6 +147,22 @@ CSS와 페이지 제목은 `.page-title` 클래스로 글자 뒤에만 형광펜
 
 Windows의 '애니메이션 효과'가 꺼져 있으면 이 설정이 켜집니다. 개발 중 애니메이션이
 안 보인다면 먼저 이걸 의심할 것.
+
+## 글 편집기
+
+`npm run write` → http://localhost:4321/editor
+
+velog 같은 좌우 분할 편집기입니다. 왼쪽에 마크다운을 쓰면 오른쪽에 바로 그려지고,
+저장하면 `src/content/posts/` 아래에 `.md` 파일이 생깁니다.
+
+**개발 서버에서만 열립니다.** 파일을 디스크에 쓰려면 서버가 필요한데 배포본은
+정적 파일뿐입니다. 그래서 `src/pages` 밖(`src/dev/`)에 두고
+`astro.config.ts` 의 `devEditor()` 통합이 `command === 'dev'` 일 때만 라우트를 주입합니다.
+**빌드 결과물에 편집기가 들어가면 안 됩니다** — 누구나 글을 쓸 수 있게 됩니다.
+
+- 임시저장 → `draft: true`, 출간하기 → `draft: false`
+- 어느 쪽이든 파일만 만듭니다. **실제 배포는 git push 를 해야 합니다**
+- 쓰던 글은 localStorage 에도 자동 보관되어 새로고침해도 남습니다
 
 ## 페이징
 
