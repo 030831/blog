@@ -47,13 +47,7 @@ const minutes = readingTime(post.body ?? '');
         )}
       </div>
 
-      {post.data.tags.length > 0 && (
-        <ul class="tags">
-          {post.data.tags.map((tag) => (
-            <li><a href={`/tags/${encodeURIComponent(tag)}/`}>#{tag}</a></li>
-          ))}
-        </ul>
-      )}
+
     </header>
 
     <TableOfContents headings={headings} />

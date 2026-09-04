@@ -1,0 +1,127 @@
+---
+import { urlOfCategory, type CategoryNode } from '../lib/categories';
+
+interface Props {
+  nodes: CategoryNode[];
+  /** 현재 보고 있는 카테고리 경로. 해당 항목과 그 조상이 강조됩니다. */
+  current?: string;
+  /** 중첩 단계. 재귀 호출에서만 씁니다. */
+  depth?: number;
+}
+
+const { nodes, current = '', depth = 0 } = Astro.props;
+
+const isCurrent = (path: string) => current === path;
+const isAncestor = (path: string) => current.startsWith(path + '/');
+---
+
+<ul class:list={['tree', { root: depth === 0 }]}>
+  {nodes.map((node) => (
+    <li>
+      <a
+        href={urlOfCategory(node.path)}
+        class:list={[
+          'node',
+          `d${Math.min(node.depth, 3)}`,
+          { current: isCurrent(node.path), ancestor: isAncestor(node.path) },
+        ]}
+        aria-current={isCurrent(node.path) ? 'page' : undefined}
+        title={node.label}
+      >
+        <span class="label">{node.label}</span>
+        <span class="n">{node.totalCount}</span>
+      </a>
+
+      {node.children.length > 0 && (
+        <Astro.self nodes={node.children} current={current} depth={depth + 1} />
+      )}
+    </li>
+  ))}
+</ul>
+
+<style>
+  .tree { list-style: none; margin: 0; padding: 0; }
+
+  /* 최상위 항목들 사이는 조금 띄워 덩어리를 구분합니다. */
+  .tree.root > li + li { margin-top: .55rem; }
+
+  /* ── 트리 연결선 ──
+     하위 목록의 각 항목이 자기 몫의 세로선과 가로선을 그립니다.
+     마지막 항목은 세로선을 연결점까지만 그려 ㄴ 모양이 됩니다. */
+  .tree:not(.root) { margin-left: .55rem; }
+  .tree:not(.root) > li {
+    position: relative;
+    padding-left: 1.05rem;
+  }
+  .tree:not(.root) > li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    border-left: 1px solid var(--border-strong);
+  }
+  .tree:not(.root) > li:last-child::before { height: .95rem; }
+  .tree:not(.root) > li::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: .95rem;
+    width: .62rem;
+    border-top: 1px solid var(--border-strong);
+  }
+
+  /* ── 항목: 작은 버튼 ── */
+  .node {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    margin: .13rem 0;
+    padding: .26rem .7rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    max-width: 100%;
+    transition:
+      color .18s ease,
+      background .18s ease,
+      border-color .18s ease,
+      box-shadow .18s ease,
+      transform .18s ease;
+  }
+  .node:hover {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: var(--accent-soft);
+    transform: translateX(2px);
+  }
+
+  .label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .n {
+    flex-shrink: 0;
+    font-size: .68rem;
+    color: var(--text-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* 깊이에 따라 글자를 조금씩 작게 해 위계를 드러냅니다. */
+  .d1 { font-size: .95rem; font-weight: 600; color: var(--text); }
+  .d2 { font-size: .85rem; color: var(--text-muted); }
+  .d3 { font-size: .8rem; color: var(--text-muted); }
+
+  .node.current {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .node.ancestor { color: var(--text); border-color: var(--border-strong); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .node:hover { transform: none; }
+  }
+</style>

@@ -6,13 +6,6 @@ export const SITE = {
   url: 'https://030831-blog.vercel.app',
   author: '030831',
   locale: 'ko-KR',
-  // 상단 네비게이션
-  nav: [
-    { label: '글', href: '/posts' },
-    { label: '카테고리', href: '/categories' },
-    { label: '태그', href: '/tags' },
-    { label: '소개', href: '/about' },
-  ],
   // 푸터 링크. 비워두면 표시되지 않습니다.
   social: [
     { label: 'GitHub', href: 'https://github.com/030831' },

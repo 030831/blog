@@ -2,8 +2,9 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import Breadcrumb from '../../components/Breadcrumb.astro';
 import PostRow from '../../components/PostRow.astro';
+import CategoryTree from '../../components/CategoryTree.astro';
 import SearchResults from '../../components/SearchResults.astro';
-import { getCategoryTree, flattenTree, getPostsInCategory, labelOf, urlOfCategory } from '../../lib/categories';
+import { getCategoryTree, flattenTree, getPostsInCategory, labelOf } from '../../lib/categories';
 
 export async function getStaticPaths() {
   const tree = await getCategoryTree();
@@ -36,12 +37,7 @@ const parentPath = node.path.split('/').slice(0, -1).join('/');
 
       {node.children.length > 0 && (
         <nav class="subs" aria-label="하위 카테고리">
-          {node.children.map((child) => (
-            <a href={urlOfCategory(child.path)}>
-              {child.label}
-              <span class="n">{child.totalCount}</span>
-            </a>
-          ))}
+          <CategoryTree nodes={node.children} current={node.path} />
         </nav>
       )}
     </header>
@@ -73,25 +69,7 @@ const parentPath = node.path.split('/').slice(0, -1).join('/');
   .count { margin: .5rem 0 0; color: var(--text-muted); font-size: .9rem; }
   .note { color: var(--text-faint); }
 
-  .subs { display: flex; flex-wrap: wrap; gap: .45rem; margin-top: 1.1rem; }
-  .subs a {
-    display: inline-flex;
-    align-items: center;
-    gap: .4rem;
-    padding: .32rem .8rem;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    font-size: .82rem;
-    color: var(--text-muted);
-    transition: color .2s ease, border-color .2s ease, background .2s ease, transform .2s ease;
-  }
-  .subs a:hover {
-    color: var(--accent);
-    border-color: var(--accent);
-    background: var(--accent-soft);
-    transform: translateY(-1px);
-  }
-  .subs .n { font-size: .7rem; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+  .subs { margin-top: 1.1rem; }
 
   .rows {
     list-style: none;
@@ -102,7 +80,5 @@ const parentPath = node.path.split('/').slice(0, -1).join('/');
 
   .empty { color: var(--text-muted); padding-block: 3rem; text-align: center; }
 
-  @media (prefers-reduced-motion: reduce) {
-    .subs a:hover { transform: none; }
-  }
+
 </style>
