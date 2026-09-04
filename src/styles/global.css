@@ -305,3 +305,24 @@ img, svg, video { max-width: 100%; height: auto; display: block; }
 .prose summary:hover { color: var(--text); }
 .prose details > :not(summary) { margin-top: 1rem; }
 .prose details pre { background: var(--surface) !important; }
+
+/* ============================================================
+   페이지 제목 — 글자 뒤에 형광펜을 그은 듯한 배경
+   ============================================================ */
+.page-title {
+  display: inline;
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.5;
+  /* 아래 45%에만 색을 깔아 글자를 덮지 않게 합니다. */
+  background-image: linear-gradient(transparent 55%, var(--accent-soft) 55%);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  padding: 0 .18em;
+}
+
+/* 제목은 인라인이므로 아래 여백을 감싸는 쪽에서 만듭니다. */
+.page-title-wrap { display: block; }
+

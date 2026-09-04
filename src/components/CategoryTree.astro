@@ -1,127 +1,135 @@
 ---
-import { urlOfCategory, type CategoryNode } from '../lib/categories';
+import { breadcrumbOf, urlOfCategory, type CategoryNode } from '../lib/categories';
 
 interface Props {
   nodes: CategoryNode[];
-  /** 현재 보고 있는 카테고리 경로. 해당 항목과 그 조상이 강조됩니다. */
+  /** 현재 보고 있는 카테고리 경로. 해당 항목이 강조됩니다. */
   current?: string;
-  /** 중첩 단계. 재귀 호출에서만 씁니다. */
-  depth?: number;
 }
 
-const { nodes, current = '', depth = 0 } = Astro.props;
+const { nodes, current = '' } = Astro.props;
 
-const isCurrent = (path: string) => current === path;
-const isAncestor = (path: string) => current.startsWith(path + '/');
+/** 하위 전체를 한 줄로 펼칩니다. 깊이 순서를 유지해 위계가 읽히도록 합니다. */
+function descendantsOf(node: CategoryNode): CategoryNode[] {
+  return node.children.flatMap((child) => [child, ...descendantsOf(child)]);
+}
+
+/**
+ * 최상위를 뺀 나머지 경로 이름들.
+ * 'backend/spring/jpa' 를 backend 아래에서 보면 ['Spring', 'JPA'] 가 됩니다.
+ * 들여쓰기 대신 이 경로를 그대로 보여줘서 깊이가 깊어져도 자리를 더 먹지 않습니다.
+ */
+function relativeLabels(path: string): string[] {
+  return breadcrumbOf(path).slice(1).map((step) => step.label);
+}
+
+const rows = nodes.map((root) => ({ root, descendants: descendantsOf(root) }));
 ---
 
-<ul class:list={['tree', { root: depth === 0 }]}>
-  {nodes.map((node) => (
-    <li>
+<div class="grid">
+  {rows.map(({ root, descendants }) => (
+    <>
       <a
-        href={urlOfCategory(node.path)}
-        class:list={[
-          'node',
-          `d${Math.min(node.depth, 3)}`,
-          { current: isCurrent(node.path), ancestor: isAncestor(node.path) },
-        ]}
-        aria-current={isCurrent(node.path) ? 'page' : undefined}
-        title={node.label}
+        href={urlOfCategory(root.path)}
+        class:list={['root', { current: current === root.path }]}
+        aria-current={current === root.path ? 'page' : undefined}
       >
-        <span class="label">{node.label}</span>
-        <span class="n">{node.totalCount}</span>
+        <span class="label">{root.label}</span>
+        <span class="n">{root.totalCount}</span>
       </a>
 
-      {node.children.length > 0 && (
-        <Astro.self nodes={node.children} current={current} depth={depth + 1} />
-      )}
-    </li>
+      <div class="branch">
+        {descendants.map((node) => (
+          <a
+            href={urlOfCategory(node.path)}
+            class:list={['leaf', { current: current === node.path }]}
+            aria-current={current === node.path ? 'page' : undefined}
+          >
+            {relativeLabels(node.path).map((label, i) => (
+              <>
+                {i > 0 && <span class="sep" aria-hidden="true">›</span>}
+                <span class="seg">{label}</span>
+              </>
+            ))}
+            <span class="n">{node.totalCount}</span>
+          </a>
+        ))}
+      </div>
+    </>
   ))}
-</ul>
+</div>
 
 <style>
-  .tree { list-style: none; margin: 0; padding: 0; }
-
-  /* 최상위 항목들 사이는 조금 띄워 덩어리를 구분합니다. */
-  .tree.root > li + li { margin-top: .55rem; }
-
-  /* ── 트리 연결선 ──
-     하위 목록의 각 항목이 자기 몫의 세로선과 가로선을 그립니다.
-     마지막 항목은 세로선을 연결점까지만 그려 ㄴ 모양이 됩니다. */
-  .tree:not(.root) { margin-left: .55rem; }
-  .tree:not(.root) > li {
-    position: relative;
-    padding-left: 1.05rem;
-  }
-  .tree:not(.root) > li::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 0;
-    height: 100%;
-    border-left: 1px solid var(--border-strong);
-  }
-  .tree:not(.root) > li:last-child::before { height: .95rem; }
-  .tree:not(.root) > li::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: .95rem;
-    width: .62rem;
-    border-top: 1px solid var(--border-strong);
+  /*
+   * 최상위는 왼쪽 열에 세로로 줄을 맞추고, 하위는 오른쪽에서 가로로 흐릅니다.
+   * 하위가 많아지면 아래로 접히기만 하므로, 트리가 복잡해져도
+   * 들여쓰기가 누적되거나 가로 스크롤이 생기지 않습니다.
+   */
+  .grid {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: .3rem 1.1rem;
+    align-items: start;
   }
 
-  /* ── 항목: 작은 버튼 ── */
-  .node {
+  /* ── 왼쪽: 최상위 카테고리 ── */
+  .root {
     display: inline-flex;
     align-items: center;
     gap: .4rem;
-    margin: .13rem 0;
-    padding: .26rem .7rem;
-    border: 1px solid var(--border);
+    padding: .34rem .85rem;
     border-radius: 999px;
-    background: var(--surface);
-    max-width: 100%;
-    transition:
-      color .18s ease,
-      background .18s ease,
-      border-color .18s ease,
-      box-shadow .18s ease,
-      transform .18s ease;
+    background: var(--bg-subtle);
+    font-size: .92rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    transition: color .18s ease, background .18s ease, box-shadow .18s ease;
   }
-  .node:hover {
-    color: var(--accent);
-    border-color: var(--accent);
-    background: var(--accent-soft);
-    transform: translateX(2px);
+  .root:hover { color: var(--accent); background: var(--accent-soft); }
+  .root.current {
+    color: var(--bg);
+    background: var(--text);
   }
 
-  .label {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  /* ── 오른쪽: 하위 카테고리들 ── */
+  .branch {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .3rem .45rem;
+    min-height: 2rem;
+    padding-top: .1rem;
   }
+
+  .leaf {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .26rem .7rem;
+    border-radius: 999px;
+    font-size: .84rem;
+    color: var(--text-muted);
+    transition: color .18s ease, background .18s ease;
+  }
+  .leaf:hover { color: var(--accent); background: var(--accent-soft); }
+  .leaf.current { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+
+  /* 경로가 깊어지면 앞쪽 조각을 흐리게 해서 마지막 이름이 눈에 들어오게 합니다. */
+  .seg { color: inherit; }
+  .leaf .seg:not(:last-of-type) { color: var(--text-faint); }
+  .sep { color: var(--text-faint); font-size: .78em; margin-inline: .05rem; }
+
   .n {
-    flex-shrink: 0;
     font-size: .68rem;
     color: var(--text-faint);
     font-variant-numeric: tabular-nums;
   }
+  .root .n { color: inherit; opacity: .6; }
 
-  /* 깊이에 따라 글자를 조금씩 작게 해 위계를 드러냅니다. */
-  .d1 { font-size: .95rem; font-weight: 600; color: var(--text); }
-  .d2 { font-size: .85rem; color: var(--text-muted); }
-  .d3 { font-size: .8rem; color: var(--text-muted); }
-
-  .node.current {
-    color: var(--accent);
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    font-weight: 600;
-  }
-  .node.ancestor { color: var(--text); border-color: var(--border-strong); }
-
-  @media (prefers-reduced-motion: reduce) {
-    .node:hover { transform: none; }
+  /* 좁은 화면에서는 최상위와 하위를 위아래로 쌓습니다. */
+  @media (max-width: 36rem) {
+    .grid { grid-template-columns: 1fr; gap: .2rem; }
+    .branch { padding: 0 0 .8rem .6rem; min-height: 0; }
   }
 </style>
