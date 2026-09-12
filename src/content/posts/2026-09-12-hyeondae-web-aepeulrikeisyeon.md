@@ -265,5 +265,60 @@ public class DUserDao extends UserDao {
 
 따라서, extends 로 확장을 통해서 getConnection() 을 구현하는 책임을 UserDAO 클래스가 아니라, UserDAO 클래스를 사용하는 사용자에게 책임을 넘김으로써, UserDao는 더이상 '어떻게 데이터베이스에 연결할 것인가' 에 대한 역할을 신경써도 되지 않습니다. 이로 인해 UserDao는 '데이터베이스 연결 로직 변화'에 대응할 수 있습니다.
 
-# 13. 클래스의 분리
-이전의 상속을 통한 방법을 통해서 N사와 D사에서 직접 DB연결 코드를 위한 클래스를 작성하도록 만들었습니다. 하지만 아주 많은 사용자가 생긴다면 그 사용자마다 서로 다른 클래스를 만들어야 하고
+# 13. 상속의 문제점
+이전의 상속을 통한 방법으로 N사와 D사가 직접 DB 연결 코드를 작성하도록 만들었습니다. 하지만 상속은 생각보다 문제가 많습니다.
+
+자바는 다중 상속을 허용하지 않기 때문에, UserDao가 다른 목적으로 이미 상속을 쓰고 있다면 이 방법은 쓸 수 없습니다. 또한 자식클래스는 부모클래스에 종속되기 때문에, UserDao가 변경되면 이를 상속한 모든 클래스를 함께 변경될 수 있습니다.
+
+가장 큰 문제는 확장이 UserDao 안에 갇힌다는 점입니다. 앞으로 AccountDao, MessageDao 같은 DAO가 생긴다면, 이들도 각자 상속 구조를 만들어야 하고 DB 연결 코드는 그때마다 다시 작성됩니다. 중복을 없애려고 시작했는데 중복이 되돌아오는 셈입니다.
+
+# 14. 인터페이스 도입
+
+상속의 문제점을 해결하기 위한 가장 간단한 방법은 DB 커넥션과 관련된 부분을 아에 별도의 클래스를 만들어 사용하는 것입니다. 
+
+```java title="ConnectionMaker.java"
+public interface ConnectionMaker {
+    public Connection makeConnection() throws ClassNotFoundException, SQLException;
+}
+```
+
+인터페이스는 필요한 반환값, 메서드 이름, 파라미터 값을 정하지만 어떻게 구현할지는 정의하지 않습니다. 즉, 데이터베이스에 연결한다 라는 역할에 대한 기준만 세우고, 어떻게 구현할지는 인터페이스를 사용하는 사용자에게 맡깁니다.
+
+```java title="DConnectionMaker.java"
+public class DConnectionMaker implements ConnectionMaker {
+
+    public Connection makeConnection() throws ClassNotFoundException, SQLException {
+        // D사의 독자적인 방법으로 Connection을 생성하는 코드
+    }
+}
+```
+
+이렇게 인터페이스를 implements 키워드를 사용하여 구현할 수 있습니다.
+
+```java title="UserDao.java"
+public class UserDao {
+    private ConnectionMaker connectionMaker;
+
+    public UserDao() {
+        connectionMaker = new DConnectionMaker();
+    }
+
+    public void add(User user) throws ClassNotFoundException, SQLException {
+        Connection c = connectionMaker.makeConnection();
+        ...
+    }
+
+    public User get(String id) throws ClassNotFoundException, SQLException {
+        Connection c = connectionMaker.makeConnection();
+        ...
+    }
+}
+```
+
+기존의 UserDao 도 인터페이스를 가져다 사용하기만 하면 되고, 인터페이스를 구현한 객체가 어떻게 구현했는지 알 필요도 전혀 알 필요가없습니다.
+동시에 상속에서 드러나는 문제도 대부분 해결됩니다. 다중 상속의 문제, 자식 클래스가 부모 클래스에 의존하게 되는 문제들은 이제 발생하지 않습니다.
+
+하지만, 아직 하나의 문제가 남았습니다.
+바로 UserDao의 생성자에서 어떤 구현 클래스를 사용할 것인가를 정해야 한다는 것입니다.
+
+UserDao는 데이터베이스 연결을 어떻게 할것인지는 이제 신경쓰지 않아도 되지만, 어떤 구현 클래스를 써야할지 직접 정해야 합니다. 이로 인해서
