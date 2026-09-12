@@ -332,3 +332,60 @@ Ioc란 Inversion of Control 약어로 프로그램의 제어 흐름 구조가 �
 <br> 초기의 UserDao를 보면 자신이 사용할 데이터베이스 로직을 구현하고 언제, 어떻게 사용할지 스스로 관리합니다.
 <br>제어의 역전이란 이런 제어의 흐름을 거꾸로 뒤집는 것을 뜻합니다. 오브젝트가 자신이 사용할 다른 오브젝트를 스스로 선택하지 않고, 직접 생성하지도 않으며, 어떻게 만들어지고 어디에 사용되는지 알 수 없습니다.
 <br> 여기서 프레임워크와 라이브러리의 차이가 드러납니다. 프레임워크도 제어의 역전 개념이 적용된 기술인데, 라이버리리에 있는 함수를 직접 호출해서 제어하는게 아니라 프레임워크 위에 개발한 클래스를 등록해두고, 프레임워크가 애플리케이션 흐름을 제어합니다.
+
+# 16. DaoFactory
+
+이제 본격적으로 스프링의 기능을 사용하기 위해 DaoFactory 라는 클래스를 만들어 보겠습니다.
+
+```java title="DaoFactory.java"
+@Configuration
+public class DaoFactory {
+
+    @Bean
+    public UserDao userDao() {
+        return new UserDao(connectionMaker());
+    }
+
+    @Bean
+    public ConnectionMaker connectionMaker() {
+        return new DConnectionMaker();
+    }
+}
+```
+@Configuration 을 통해 스프링에게 설정 정보를 담당하는 에노테이션을 사용하고 @Bean 을 통해서 이전에 UserDao 가 책임을 맡은 어떤 구현 클래스를 사용할 것인가? 를 이제 UserDao 가 아닌 DaoFactory 라는 설정정보를 담당하는 클래스에서 책임을 분리했습니다. 이 에노테이션은 스프링의 기능중 하나입니다.
+
+# 17. UserDao 개선
+
+```java title="UserDao.java"
+public class UserDao {
+    private ConnectionMaker connectionMaker;
+
+    public UserDao(ConnectionMaker connectionMaker) {
+        this.connectionMaker = connectionMaker;
+    }
+
+    public void add(User user) throws ClassNotFoundException, SQLException {
+        Connection c = connectionMaker.makeConnection();
+        ...
+    }
+
+    public User get(String id) throws ClassNotFoundException, SQLException {
+        Connection c = connectionMaker.makeConnection();
+        ...
+    }
+}
+```
+이제 UserDao 클래스는 생성자에서 데이터베이스 연결을 구현하는 객체를 파라미터로 받아옴으로써 역할과 책임을 분리하게 되었습니다. 이제 UserDao는 어떻게 데이터베이스 연결을 할것인가를 결정하는게 아니라, 이미 연결된 데이터베이스를 통해서 add 와 get 메서드에서 데이터를 어떤식으로 추가하고 가져올것인지 하나의 기능에만 집중할 수 있게 되었습니다.
+
+# 18. UserDao 사용
+
+```java
+ApplicationContext context = new AnnotationConfigApplicationContext(DaoFactory.class);
+UserDao dao = context.getBean("userDao", UserDao.class);
+```
+이전에 DaoFactory 를 통해서 UserDao 를 스프링에 등록했는데, 사용하기 위해서는 위와같은 코드로 UserDao를 사용할 수 있습니다. 에노테이션으로 설정했기 때문에 에노테이션 설정을 담당하는 구현체를 사용했습니다.
+
+```java
+UserDao dao = new DaoFactory().userDao();
+```
+따라서 사용하는쪽은 이제 위와같은 코드 한줄로 가능합니다.
