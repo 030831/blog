@@ -280,7 +280,9 @@ export const POST: APIRoute = async ({ request }) => {
          * `git add -A` 로 전부 담으면 손보던 코드까지 딸려 올라갑니다.
          * 글 하나 올리려다 미완성 코드가 배포되는 사고를 막기 위한 제한입니다.
          */
-        await git(['add', '--', 'src/content/posts', 'src/config.ts']);
+        // public 은 이미지 때문에 반드시 포함해야 합니다.
+        // 빠뜨리면 글만 올라가고 사진이 배포본에서 깨집니다.
+        await git(['add', '--', 'src/content/posts', 'src/config.ts', 'public']);
 
         // 담긴 게 없으면 커밋할 것도 없습니다. 오류가 아니라 정상 상황입니다.
         const status = await git(['diff', '--cached', '--name-only']);

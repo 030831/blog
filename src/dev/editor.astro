@@ -88,8 +88,11 @@ const today = (() => {
           <textarea
             id="body"
             class="body-input"
-            placeholder="당신의 이야기를 적어보세요..."
+            placeholder="당신의 이야기를 적어보세요...&#10;&#10;이미지는 붙여넣거나 끌어다 놓으면 바로 올라갑니다."
             spellcheck="false"></textarea>
+
+          <!-- 이미지 버튼이 여는 파일 선택 창 -->
+          <input type="file" id="image-file" accept="image/*" multiple hidden />
         </section>
 
         <!-- ── 오른쪽: 미리보기 ── -->
@@ -254,6 +257,13 @@ const today = (() => {
         line-height: 1.85;
       }
       .body-input::placeholder { color: var(--text-faint); font-family: var(--font-sans); }
+
+      /* 이미지를 끌어다 놓는 중임을 알려줍니다. */
+      .body-input.dropping {
+        outline: 2px dashed var(--accent);
+        outline-offset: 4px;
+        border-radius: 6px;
+      }
 
       /* ── 미리보기 ── */
       .preview-title {
@@ -470,6 +480,96 @@ const today = (() => {
           saveLocal();
         };
 
+        // ── 이미지 올리기 ──
+        const imageInput = $<HTMLInputElement>('image-file');
+
+        /** 커서 자리에 글을 끼워 넣습니다. */
+        const insertAtCursor = (text: string) => {
+          const at = bodyInput.selectionStart;
+          bodyInput.setRangeText(text, at, bodyInput.selectionEnd, 'end');
+          render();
+          saveLocal();
+        };
+
+        /**
+         * 이미지를 올리고 마크다운을 끼워 넣습니다.
+         *
+         * 올리는 동안 자리를 비워두면 어디에 들어갈지 알 수 없으므로,
+         * 먼저 '올리는 중' 자리표시를 넣고 끝나면 그 자리를 바꿔칩니다.
+         * 여러 장을 한꺼번에 올려도 각자 제자리를 지킵니다.
+         */
+        const uploadImage = async (file: File) => {
+          const token = `![올리는 중… ${file.name}]()`;
+          insertAtCursor(`${token}\n`);
+
+          const replaceToken = (markdown: string) => {
+            bodyInput.value = bodyInput.value.replace(token, markdown);
+            render();
+            saveLocal();
+          };
+
+          try {
+            const form = new FormData();
+            form.append('file', file);
+
+            const response = await fetch('/api/upload-image', { method: 'POST', body: form });
+            const data = await response.json();
+
+            if (!response.ok) {
+              replaceToken('');
+              return setStatus(data.error ?? '이미지를 올리지 못했습니다.', 'error');
+            }
+
+            const alt = file.name.replace(/\.[^.]+$/, '');
+            replaceToken(`![${alt}](${data.url})`);
+
+            const saved = data.savedKB && data.originalKB
+              ? ` · ${data.originalKB}KB → ${data.savedKB}KB`
+              : '';
+            setStatus(`이미지를 올렸습니다: ${data.url}${saved}`, 'ok');
+          } catch (error) {
+            replaceToken('');
+            setStatus(`이미지를 올리지 못했습니다: ${(error as Error).message}`, 'error');
+          }
+        };
+
+        const uploadAll = async (files: FileList | File[]) => {
+          for (const file of Array.from(files)) {
+            if (file.type.startsWith('image/')) await uploadImage(file);
+          }
+        };
+
+        imageInput?.addEventListener('change', () => {
+          if (imageInput.files) uploadAll(imageInput.files);
+          imageInput.value = '';
+        });
+
+        // 붙여넣기: 캡처 도구로 찍은 그림도 그대로 올라갑니다.
+        bodyInput.addEventListener('paste', (event) => {
+          const files = [...(event.clipboardData?.items ?? [])]
+            .filter((item) => item.kind === 'file' && item.type.startsWith('image/'))
+            .map((item) => item.getAsFile())
+            .filter((file): file is File => file !== null);
+
+          if (files.length === 0) return;
+          event.preventDefault();
+          uploadAll(files);
+        });
+
+        // 끌어다 놓기
+        bodyInput.addEventListener('dragover', (event) => {
+          if (!event.dataTransfer?.types.includes('Files')) return;
+          event.preventDefault();
+          bodyInput.classList.add('dropping');
+        });
+        bodyInput.addEventListener('dragleave', () => bodyInput.classList.remove('dropping'));
+        bodyInput.addEventListener('drop', (event) => {
+          if (!event.dataTransfer?.files.length) return;
+          event.preventDefault();
+          bodyInput.classList.remove('dropping');
+          uploadAll(event.dataTransfer.files);
+        });
+
         const commands: Record<string, () => void> = {
           h1: () => prefixLine('# '),
           h2: () => prefixLine('## '),
@@ -480,7 +580,7 @@ const today = (() => {
           strike: () => wrap('~~', '~~', '취소선'),
           quote: () => prefixLine('> '),
           link: () => wrap('[', '](https://)', '링크 글자'),
-          image: () => wrap('![', '](이미지 주소)', '설명'),
+          image: () => imageInput?.click(),
           code: () => wrap('```java title="파일명.java"\n', '\n```', '코드'),
         };
 
