@@ -68,6 +68,12 @@ export default defineConfig({
   integrations: [mdx(), sitemap(), devEditor()],
   markdown: {
     shikiConfig: {
+      /*
+       * Shiki 에 jsp 문법이 없어서 그대로 두면 색칠 없이 회색 글자로만 나옵니다.
+       * JSP 의 <% %> 구조는 ERB(HTML 안에 <% %> 로 코드를 넣는 방식)와 같아서
+       * 태그와 스크립틀릿 경계가 제대로 구분됩니다.
+       */
+      langAlias: { jsp: 'erb' },
       // 라이트/다크 두 벌을 동시에 구워둡니다. 테마 전환 시 CSS 변수로 갈아끼웁니다.
       themes: { light: 'github-light', dark: 'github-dark-dimmed' },
       transformers: [transformerMetaHighlight(), codeBlockChrome()],
